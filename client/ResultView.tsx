@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { StyleSheet, Text, View, type TextStyle } from "react-native";
 import { parseInline } from "../shared/rich-text";
 import type { Translation } from "../shared/translate";
+import { fontSize } from "./typography";
 
 type Theme = { colors: Record<string, string> };
 
@@ -29,20 +30,21 @@ function createStyles(theme: Theme, short: boolean) {
   const c = theme.colors;
   return StyleSheet.create({
     translation: short
-      ? { color: c.foreground, fontSize: 16, fontWeight: "600" }
-      : { color: c.foreground, fontSize: 15, lineHeight: 22 },
+      ? { color: c.foreground, fontSize: fontSize.lg, fontWeight: "600" }
+      : { color: c.foreground, fontSize: fontSize.content, lineHeight: 22 },
+    passage: { backgroundColor: c.surface2, borderRadius: 8, padding: 10 },
     section: { gap: 8, paddingTop: 10, marginTop: 4, borderTopWidth: 1, borderTopColor: c.border },
-    sectionTitle: { color: c.foregroundMuted, fontSize: 11, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" },
+    sectionTitle: { color: c.foregroundMuted, fontSize: fontSize.sm, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" },
     item: { gap: 2 },
     line: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", gap: 6 },
-    term: { color: c.foreground, fontSize: 14, fontWeight: "600" },
-    tag: { color: c.foregroundMuted, fontSize: 12, fontStyle: "italic" },
-    body: { color: c.foreground, fontSize: 14, lineHeight: 20 },
-    muted: { color: c.foregroundMuted, fontSize: 13, lineHeight: 19 },
-    example: { color: c.foregroundMuted, fontSize: 13, lineHeight: 19, fontStyle: "italic" },
-    code: { backgroundColor: c.surface2, color: c.foreground, fontFamily: "monospace", fontSize: 13 },
+    term: { color: c.foreground, fontSize: fontSize.base, fontWeight: "600" },
+    tag: { color: c.foregroundMuted, fontSize: fontSize.sm, fontStyle: "italic" },
+    body: { color: c.foreground, fontSize: fontSize.base, lineHeight: 20 },
+    muted: { color: c.foregroundMuted, fontSize: fontSize.base, lineHeight: 20 },
+    example: { color: c.foregroundMuted, fontSize: fontSize.base, lineHeight: 20, fontStyle: "italic" },
+    code: { backgroundColor: c.surface2, color: c.foreground, fontSize: fontSize.base },
     pattern: { alignSelf: "flex-start", backgroundColor: c.surface2, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-    patternText: { color: c.foreground, fontFamily: "monospace", fontSize: 13 },
+    patternText: { color: c.foreground, fontSize: fontSize.base },
   });
 }
 
@@ -52,7 +54,7 @@ export function ResultView({ result, short, theme }: { result: Translation; shor
   const rich = (value: string, style: TextStyle) => <Rich style={style} codeStyle={styles.code}>{value}</Rich>;
   return (
     <>
-      {rich(result.translation, styles.translation)}
+      {short ? rich(result.translation, styles.translation) : <View style={styles.passage}>{rich(result.translation, styles.translation)}</View>}
       {result.breakdown.length > 0 ? (
         <Section title="Words & phrases" styles={styles}>
           {result.breakdown.map((item, index) => (

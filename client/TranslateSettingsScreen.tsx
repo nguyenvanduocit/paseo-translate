@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { translateSettings, type TranslateSettings } from "../shared/settings";
 import { defaultPromptTemplate } from "../shared/translate";
+import { fontSize } from "./typography";
 
 type Ready = Extract<SettingsState<typeof translateSettings.schema>, { status: "ready" }>;
 type Theme = PluginSurfaceProps["theme"];
@@ -23,15 +24,15 @@ function Editor({ settings, theme }: { settings: Ready; theme: Theme }) {
     () => StyleSheet.create({
       block: { padding: 16, gap: 8 },
       heading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-      label: { color: theme.colors.foreground, fontSize: 15 },
-      hint: { color: theme.colors.foregroundMuted, fontSize: 13, lineHeight: 18 },
-      input: { color: theme.colors.foreground, backgroundColor: theme.colors.surface0, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, lineHeight: 19, textAlignVertical: "top" },
-      link: { color: theme.colors.foregroundMuted, fontSize: 13 },
+      label: { color: theme.colors.foreground, fontSize: fontSize.content },
+      hint: { color: theme.colors.foregroundMuted, fontSize: fontSize.base, lineHeight: 20 },
+      input: { color: theme.colors.foreground, backgroundColor: theme.colors.surface0, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: fontSize.base, lineHeight: 20, textAlignVertical: "top" },
+      link: { color: theme.colors.foregroundMuted, fontSize: fontSize.base },
       footer: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
       save: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 8, backgroundColor: theme.colors.accent },
-      saveText: { color: theme.colors.accentForeground, fontSize: 14, fontWeight: "600" },
-      status: { color: theme.colors.foregroundMuted, fontSize: 13 },
-      error: { color: theme.colors.statusDanger, fontSize: 13 },
+      saveText: { color: theme.colors.accentForeground, fontSize: fontSize.base, fontWeight: "600" },
+      status: { color: theme.colors.foregroundMuted, fontSize: fontSize.base },
+      error: { color: theme.colors.statusDanger, fontSize: fontSize.base },
     }),
     [theme],
   );

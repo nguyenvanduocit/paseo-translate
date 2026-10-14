@@ -78,8 +78,15 @@ The floating button is DOM, outside React, so `theme.colors` is not available to
 Unistyles layer publishes every theme color as `--colors-<name>` on the root element and swaps them
 with the theme. The button uses the composer pill's tokens: `surface1` background, `border-accent`
 border, `foreground-muted` text, `surface2` and `foreground` on hover. CSS system colors are the
-fallback on a host that does not publish the variables. The panel and settings screen use
-`theme.colors` from props.
+fallback on a host that does not publish the variables. The panel and settings screen are React
+Native, so colors come from `theme.colors` in props, never from CSS variables.
+
+Type follows Paseo's scale. Unistyles publishes only string values as variables, so sizes have no
+variable; `client/typography.ts` copies `FONT_SIZE` from `packages/app/src/styles/theme.ts`. Body text
+is `base` (14), the text being studied is `content` (15, the chat's own size), tags and section titles
+are `sm` (12). Font family needs nothing: Paseo points every text element under `#root` at its UI font
+through one CSS rule, so plugin text matches. The same rule applies the UI font to a `fontFamily:
+"monospace"` style, so inline code is marked by a `surface2` background instead.
 
 ### Browser APIs live in one file
 

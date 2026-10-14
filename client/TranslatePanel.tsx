@@ -3,6 +3,7 @@ import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ResultView } from "./ResultView";
+import { fontSize } from "./typography";
 import { clearLookups, removeLookup, useLookups, type Lookup } from "./lookups";
 import { buildLookupPrompt } from "../shared/rpc";
 import { retryLookup, type TranslatorDeps } from "./translator";
@@ -14,25 +15,25 @@ function createStyles(theme: Theme, compact: boolean) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.surface0 },
     content: { padding: compact ? 12 : 16, gap: compact ? 8 : 12 },
-    empty: { color: theme.colors.foregroundMuted, fontSize: 14 },
+    empty: { color: theme.colors.foregroundMuted, fontSize: fontSize.base },
     card: { padding: compact ? 12 : 14, gap: 6, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface1 },
     bar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: compact ? 12 : 16, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-    barLabel: { color: theme.colors.foregroundMuted, fontSize: 13 },
+    barLabel: { color: theme.colors.foregroundMuted, fontSize: fontSize.base },
     barActions: { flexDirection: "row", alignItems: "center", gap: 4 },
     iconButton: { padding: 6, borderRadius: 6 },
-    link: { color: theme.colors.foregroundMuted, fontSize: 13, paddingVertical: 4, paddingHorizontal: 8 },
+    link: { color: theme.colors.foregroundMuted, fontSize: fontSize.base, paddingVertical: 4, paddingHorizontal: 8 },
     top: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
     head: { flex: 1, flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
-    original: { color: theme.colors.foregroundMuted, fontSize: 13, flex: 1 },
-    word: { color: theme.colors.foreground, fontSize: 18, fontWeight: "600" },
-    pos: { color: theme.colors.foregroundMuted, fontSize: 13, fontStyle: "italic" },
-    error: { color: theme.colors.statusDanger, fontSize: 13 },
+    original: { color: theme.colors.foreground, fontSize: fontSize.content, lineHeight: 22, flex: 1 },
+    word: { color: theme.colors.foreground, fontSize: fontSize.xl, fontWeight: "600" },
+    pos: { color: theme.colors.foregroundMuted, fontSize: fontSize.base, fontStyle: "italic" },
+    error: { color: theme.colors.statusDanger, fontSize: fontSize.base },
     retry: { alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: theme.colors.accent },
-    retryText: { color: theme.colors.accentForeground, fontSize: 13 },
+    retryText: { color: theme.colors.accentForeground, fontSize: fontSize.base },
   });
 }
 
-// A word or short phrase gets a dictionary card; anything longer shows its original small and the translation large.
+// A word or short phrase gets a dictionary card; anything longer shows its original (up to four lines) above the translation.
 const isShort = (text: string) => text.length <= 40 && text.split(/\s+/).length <= 2;
 
 function Card({ lookup, deps, styles, theme }: { lookup: Lookup; deps: TranslatorDeps; styles: ReturnType<typeof createStyles>; theme: Theme }) {
@@ -47,7 +48,7 @@ function Card({ lookup, deps, styles, theme }: { lookup: Lookup; deps: Translato
             {translation?.pronunciation ? <Text style={styles.pos}>{translation.pronunciation}</Text> : null}
           </View>
         ) : (
-          <Text numberOfLines={3} style={styles.original}>{lookup.text}</Text>
+          <Text numberOfLines={4} style={styles.original}>{lookup.text}</Text>
         )}
         <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${lookup.text}`} onPress={() => removeLookup(lookup.id)} hitSlop={8}>
           <Text style={styles.link}>✕</Text>
