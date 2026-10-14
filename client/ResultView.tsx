@@ -48,7 +48,7 @@ function createStyles(theme: Theme, short: boolean) {
   });
 }
 
-/** The parts of a lookup result below the card header: translation, then each non-empty teaching section. */
+/** The parts of a lookup result below the selected text: translation, then each non-empty teaching section. */
 export function ResultView({ result, short, theme }: { result: Translation; short: boolean; theme: Theme }) {
   const styles = useMemo(() => createStyles(theme, short), [theme, short]);
   const rich = (value: string, style: TextStyle) => <Rich style={style} codeStyle={styles.code}>{value}</Rich>;

@@ -8,13 +8,13 @@ answers what each file does.
 
 1. `client/web.ts` decides, when the user releases the mouse or a selection key, whether the
    selection is worth offering. It shows the floating button next to the range.
-2. A click calls `startLookup`, which adds a loading card to the store and opens the panel with
+2. A click calls `startLookup`, which makes a loading lookup the workspace's latest and opens the panel with
    `client.openPanel("translate", { workspaceId, location: "explorer" })`.
 3. `translator.ts` asks the daemon for the prompt (`translate.prompt` RPC), finds the workspace's
    most recent chat, and creates a helper agent in that workspace with the chat's provider.
-4. The helper answers with JSON. `parseReply` validates it, and the card renders it.
+4. The helper answers with JSON. `parseReply` validates it, and the panel renders it.
 5. A parse failure, or a helper that stops outside `idle`, retries once with a new helper, then the
-   card shows the error and a Retry button.
+   panel shows the error and a Retry button.
 
 ## Decisions
 
@@ -64,6 +64,12 @@ characters is its own context.
 `selectionchange` fires continuously while dragging, so the button would flicker. `web.ts` decides on
 `mouseup` and on `keyup` for Shift+Arrow, Shift alone and Cmd/Ctrl+A. `mousedown` outside the button
 hides it, and `selectionchange` only hides it when the selection collapses.
+
+### The panel shows the latest result only
+
+`client/lookups.ts` keeps one lookup per workspace and each new lookup replaces it. There is no list
+and nothing to delete. The helper's answer to a replaced lookup is dropped, because `updateLookup`
+only patches the lookup that is still the latest.
 
 ### The workspace id comes from the route
 
@@ -115,9 +121,10 @@ Before a release:
 3. In the web app and the desktop app, in a dark and a light theme:
    - Select one word, a phrase and a paragraph. The button appears on release and not while dragging.
    - Select with Shift+Arrow and with Cmd/Ctrl+A. The button appears on key release.
-   - Click Translate. The panel opens and the card fills in; a paragraph card shows its original in
-     small text.
-   - Select text inside a card. No button appears.
+   - Click Translate. The panel opens and the result fills in; a paragraph shows its original above
+     the translation.
+   - Select text inside the panel. No button appears.
+   - Translate a second selection while the first is loading. Only the second result stays.
    - Open the settings from the gear, change the prompt and the extra instructions, save, and run
      another lookup.
    - Confirm the chat's own timeline gains no entries from lookups.

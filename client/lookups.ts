@@ -11,12 +11,12 @@ export interface Lookup {
   error?: string;
 }
 
-const maxLookups = 50;
-let lookups: readonly Lookup[] = [];
+// The panel shows one result per workspace: the latest lookup replaces the one before it.
+let latest: ReadonlyMap<string, Lookup> = new Map();
 const listeners = new Set<() => void>();
 
-function publish(next: readonly Lookup[]) {
-  lookups = next;
+function publish(next: ReadonlyMap<string, Lookup>) {
+  latest = next;
   for (const listener of listeners) listener();
 }
 
@@ -25,23 +25,18 @@ const subscribe = (listener: () => void) => {
   return () => void listeners.delete(listener);
 };
 
-/** Newest first. */
-export const useLookups = (): readonly Lookup[] => useSyncExternalStore(subscribe, () => lookups);
+export const useLatestLookup = (workspaceId: string): Lookup | undefined =>
+  useSyncExternalStore(subscribe, () => latest.get(workspaceId));
 
-export const getLookup = (id: string) => lookups.find(lookup => lookup.id === id);
+/** The lookup with this id while it is still its workspace's latest, otherwise undefined. */
+export const getLookup = (id: string) => [...latest.values()].find(lookup => lookup.id === id);
 
-export function addLookup(lookup: Lookup) {
-  publish([lookup, ...lookups].slice(0, maxLookups));
+export function setLatestLookup(lookup: Lookup) {
+  publish(new Map(latest).set(lookup.workspaceId, lookup));
 }
 
+/** Patches a lookup that is still the latest; the answer to a replaced lookup is dropped. */
 export function updateLookup(id: string, patch: Partial<Lookup>) {
-  publish(lookups.map(lookup => (lookup.id === id ? { ...lookup, ...patch } : lookup)));
-}
-
-export function removeLookup(id: string) {
-  publish(lookups.filter(lookup => lookup.id !== id));
-}
-
-export function clearLookups(workspaceId: string) {
-  publish(lookups.filter(lookup => lookup.workspaceId !== workspaceId));
+  const current = getLookup(id);
+  if (current) publish(new Map(latest).set(current.workspaceId, { ...current, ...patch }));
 }

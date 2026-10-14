@@ -1,6 +1,6 @@
 import type { PaseoApi } from "@getpaseo/client";
 import { parseReply, replyJsonSchema, systemPrompt, type Candidate, type Translation } from "../shared/translate";
-import { addLookup, getLookup, updateLookup } from "./lookups";
+import { getLookup, setLatestLookup, updateLookup } from "./lookups";
 
 // Marks the helper agents so they can be told apart from the user's own agents.
 const translatorLabel = "paseo-translate";
@@ -69,7 +69,7 @@ async function settle(deps: TranslatorDeps, id: string) {
 
 export function startLookup(deps: TranslatorDeps, input: Candidate & { workspaceId: string }) {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  addLookup({ id, status: "loading", ...input });
+  setLatestLookup({ id, status: "loading", ...input });
   void settle(deps, id);
 }
 

@@ -32,11 +32,10 @@ from the app instead. Update with `paseo plugin update translate`.
 
 1. Select text in a chat. The button appears when you release the mouse, or the key after a
    Shift+Arrow or Cmd/Ctrl+A selection.
-2. Click **Translate**. The Explorer panel opens with a card that fills in when the lookup finishes.
-3. Use the `✕` on a card to remove it, the trash icon to clear the workspace's cards, and the gear to
-   open the settings.
+2. Click **Translate**. The Explorer panel opens and shows the result when the lookup finishes.
+3. The panel shows the latest result for the workspace; the next lookup replaces it. The gear opens the settings.
 
-Cards live in memory and are gone after an app reload. A failed lookup shows its error and a Retry button.
+The result lives in memory and is gone after an app reload. A failed lookup shows its error and a Retry button.
 
 ## Settings
 
@@ -49,7 +48,7 @@ daemon, so every client of that daemon shares them.
 | Extra instructions | Appended to the end of every prompt, for example "medical context". |
 
 The JSON reply format is appended after your prompt on every lookup, so a custom prompt cannot break
-the cards. To translate into another language, edit the language in the prompt.
+the result. To translate into another language, edit the language in the prompt.
 
 ## How it works
 
@@ -91,9 +90,9 @@ markup) with Node's test runner. The UI is checked by hand; the checklist is in
 | `index.server.ts` | Daemon | Registers the settings document and the `translate.prompt` RPC. |
 | `client/web.ts` | App (web only) | Selection listener and floating button. The only file that touches browser APIs. |
 | `client/translator.ts` | App | Creates the helper agent and settles a lookup. |
-| `client/TranslatePanel.tsx`, `client/ResultView.tsx` | App | Panel with action bar, and the card renderer. |
+| `client/TranslatePanel.tsx`, `client/ResultView.tsx` | App | The panel with its settings button, and the result renderer. |
 | `client/TranslateSettingsScreen.tsx` | App | Settings screen. |
-| `client/lookups.ts` | App | In-memory store of cards. |
+| `client/lookups.ts` | App | In-memory store of the latest lookup per workspace. |
 | `shared/translate.ts` | Both | Selection rules, prompt, reply schema and parser. |
 | `shared/settings.ts`, `shared/rpc.ts`, `shared/rich-text.ts` | Both | Settings document, RPC contract, `**bold**` and `` `code` `` parser. |
 
