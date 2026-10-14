@@ -90,7 +90,7 @@ markup) with Node's test runner. The UI is checked by hand; the checklist is in
 | `index.server.ts` | Daemon | Registers the settings document and the `translate.prompt` RPC. |
 | `client/web.ts` | App (web only) | Selection listener and floating button. The only file that touches browser APIs. |
 | `client/translator.ts` | App | Creates the helper agent and settles a lookup. |
-| `client/TranslatePanel.tsx`, `client/ResultView.tsx` | App | The panel with its settings button, and the result renderer. |
+| `client/TranslatePanel.tsx`, `client/ResultView.tsx`, `client/EmptyState.tsx` | App | The panel with its settings button, the result renderer, and the empty-state illustration. |
 | `client/TranslateSettingsScreen.tsx` | App | Settings screen. |
 | `client/lookups.ts` | App | In-memory store of the latest lookup per workspace. |
 | `shared/translate.ts` | Both | Selection rules, prompt, reply schema and parser. |

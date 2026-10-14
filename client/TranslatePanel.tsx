@@ -2,6 +2,7 @@ import { usePaseo, useRpc, type PluginWorkspacePanelProps } from "@getpaseo/plug
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { EmptyState } from "./EmptyState";
 import { ResultView } from "./ResultView";
 import { fontSize } from "./typography";
 import { useLatestLookup, type Lookup } from "./lookups";
@@ -15,7 +16,6 @@ function createStyles(theme: Theme, compact: boolean) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.surface0 },
     content: { padding: compact ? 12 : 16, gap: compact ? 8 : 12 },
-    empty: { color: theme.colors.foregroundMuted, fontSize: fontSize.base },
     bar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: compact ? 12 : 16, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     barLabel: { color: theme.colors.foregroundMuted, fontSize: fontSize.base },
     iconButton: { padding: 6, borderRadius: 6 },
@@ -77,7 +77,7 @@ export function TranslatePanel({ theme, layout, onOpenSettings, workspaceId }: P
         </Pressable>
       </View>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        {lookup ? <Result lookup={lookup} deps={deps} styles={styles} theme={theme} /> : <Text style={styles.empty}>Select text in the chat, then click Translate.</Text>}
+        {lookup ? <Result lookup={lookup} deps={deps} styles={styles} theme={theme} /> : <EmptyState colors={theme.colors} />}
       </ScrollView>
     </View>
   );
