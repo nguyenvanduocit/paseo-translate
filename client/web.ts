@@ -49,6 +49,7 @@ declare const window: {
   location: { pathname: string };
   innerWidth: number;
   getSelection(): DomSelection | null;
+  __paseoTranslateStop?: () => void;
   addEventListener(type: string, listener: DomListener, capture: boolean): void;
   removeEventListener(type: string, listener: DomListener, capture: boolean): void;
 };
@@ -165,6 +166,9 @@ function createButton(): DomButton {
 /** Shows a floating "Translate" button next to a valid selection. Returns the cleanup. */
 export function startSelectionListener(onTranslate: (request: SelectionRequest) => void, options: SelectionOptions): () => void {
   if (!canListenToSelection()) return () => {};
+  // The host evaluates this bundle again on every plugin reload and may not have run the previous
+  // evaluation's cleanup, whose button would then stay on the page under this one.
+  window.__paseoTranslateStop?.();
   const ignored = `[data-testid="${options.ignoreTestId}"]`;
   const style = document.createElement("style");
   style.id = styleId;
@@ -226,7 +230,8 @@ export function startSelectionListener(onTranslate: (request: SelectionRequest) 
   document.addEventListener("keyup", onKeyUp);
   document.addEventListener("selectionchange", onSelectionChange);
   window.addEventListener("scroll", onScroll, true);
-  return () => {
+  const stop = () => {
+    if (window.__paseoTranslateStop === stop) window.__paseoTranslateStop = undefined;
     cancelDecision();
     document.removeEventListener("mousedown", onMouseDown);
     document.removeEventListener("mouseup", onMouseUp);
@@ -236,4 +241,6 @@ export function startSelectionListener(onTranslate: (request: SelectionRequest) 
     button.remove();
     style.remove();
   };
+  window.__paseoTranslateStop = stop;
+  return stop;
 }
