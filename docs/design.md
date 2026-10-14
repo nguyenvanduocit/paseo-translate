@@ -94,6 +94,16 @@ workspace. `workspaceIdFromLocation` reads `/workspace/<id>` from the page URL a
 prefix that the app uses for ids that are not URL-safe. It is the one place that depends on the app's
 route shape.
 
+### One instance per host, and only the owning host shows the button
+
+The app installs the plugin's client bundle once for every connected host, all in the same page.
+Each instance adds its own button and document listeners, so a user with 15 hosts gets 15 stacked
+buttons. Each instance asks its own host whether it has the workspace the route names
+(`client.paseo.workspaces.ref(id).refresh()` returns `null` when it does not) and shows the button
+only on a yes. `client/ownership.ts` remembers each answer per workspace id. The translation then
+runs on the host that owns the workspace, which is the host whose `openPanel` and `rpc` the click uses.
+Every host that has the plugin needs this version, because each host serves its own copy of the bundle.
+
 ### Styling follows Paseo's theme variables
 
 The floating button is DOM, outside React, so `theme.colors` is not available to it. Paseo's
@@ -135,7 +145,8 @@ first in `media`, because the first image is the card thumbnail.
 ## Testing
 
 `npm test` covers `shared/`: selection rules, context extraction, prompt building, reply parsing, partial reply
-parsing and inline markup. These are pure functions and need no mocks beyond `defineSettings`.
+parsing and inline markup. These are pure functions and need no mocks beyond `defineSettings`. It also drives
+`client/web.ts` against a fake page to check the button's lifecycle and host ownership.
 
 Before a release:
 

@@ -49,7 +49,6 @@ declare const window: {
   location: { pathname: string };
   innerWidth: number;
   getSelection(): DomSelection | null;
-  __paseoTranslateStop?: () => void;
   addEventListener(type: string, listener: DomListener, capture: boolean): void;
   removeEventListener(type: string, listener: DomListener, capture: boolean): void;
 };
@@ -79,6 +78,8 @@ const editable = "input, textarea, [contenteditable]:not([contenteditable='false
 export interface SelectionOptions {
   /** A web `testID` (rendered as `data-testid`) whose subtree is never offered for translation. */
   ignoreTestId: string;
+  /** Whether the workspace belongs to the host this plugin instance runs for. The app runs one instance per connected host in the same page, and only that host's instance may offer a translation. */
+  ownsWorkspace(workspaceId: string): Promise<boolean>;
 }
 
 // The app routes a workspace as /h/<serverId>/workspace/<id>; ids that are not URL-safe travel as
@@ -166,9 +167,6 @@ function createButton(): DomButton {
 /** Shows a floating "Translate" button next to a valid selection. Returns the cleanup. */
 export function startSelectionListener(onTranslate: (request: SelectionRequest) => void, options: SelectionOptions): () => void {
   if (!canListenToSelection()) return () => {};
-  // The host evaluates this bundle again on every plugin reload and may not have run the previous
-  // evaluation's cleanup, whose button would then stay on the page under this one.
-  window.__paseoTranslateStop?.();
   const ignored = `[data-testid="${options.ignoreTestId}"]`;
   const style = document.createElement("style");
   style.id = styleId;
@@ -176,21 +174,35 @@ export function startSelectionListener(onTranslate: (request: SelectionRequest) 
   const button = createButton();
   let current: SelectionRequest | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let decision = 0;
 
   const hide = () => {
+    decision++;
     current = null;
     button.style.display = "none";
   };
+  const show = ({ request, rect }: NonNullable<ReturnType<typeof readSelection>>) => {
+    current = request;
+    button.style.display = "flex";
+    const { offsetWidth, offsetHeight } = button;
+    const left = Math.min(Math.max(edge, rect.left), window.innerWidth - offsetWidth - edge);
+    const above = rect.top - offsetHeight - gap;
+    button.style.left = `${left}px`;
+    button.style.top = `${above >= edge ? above : rect.bottom + gap}px`;
+  };
+  // The answer can arrive after the selection changed; only the latest decision may show the button.
   const refresh = () => {
     const read = readSelection(ignored);
     if (!read) return hide();
-    current = read.request;
-    button.style.display = "flex";
-    const { offsetWidth, offsetHeight } = button;
-    const left = Math.min(Math.max(edge, read.rect.left), window.innerWidth - offsetWidth - edge);
-    const above = read.rect.top - offsetHeight - gap;
-    button.style.left = `${left}px`;
-    button.style.top = `${above >= edge ? above : read.rect.bottom + gap}px`;
+    const mine = ++decision;
+    options.ownsWorkspace(read.request.workspaceId).then(
+      owned => {
+        if (mine !== decision) return;
+        if (owned) show(read);
+        else hide();
+      },
+      hide,
+    );
   };
   // Decide only once the user has finished selecting, not on every `selectionchange` while dragging.
   // The tick lets the browser settle the selection (a click inside a selection collapses it).
@@ -230,8 +242,7 @@ export function startSelectionListener(onTranslate: (request: SelectionRequest) 
   document.addEventListener("keyup", onKeyUp);
   document.addEventListener("selectionchange", onSelectionChange);
   window.addEventListener("scroll", onScroll, true);
-  const stop = () => {
-    if (window.__paseoTranslateStop === stop) window.__paseoTranslateStop = undefined;
+  return () => {
     cancelDecision();
     document.removeEventListener("mousedown", onMouseDown);
     document.removeEventListener("mouseup", onMouseUp);
@@ -241,6 +252,4 @@ export function startSelectionListener(onTranslate: (request: SelectionRequest) 
     button.remove();
     style.remove();
   };
-  window.__paseoTranslateStop = stop;
-  return stop;
 }
