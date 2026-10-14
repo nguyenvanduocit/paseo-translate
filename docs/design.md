@@ -99,6 +99,13 @@ through one CSS rule, so plugin text matches. The same rule applies the UI font 
 The project typechecks without the DOM library. `client/web.ts` declares the few globals it uses and
 gates the listener on `Platform.OS === "web"`; on native it does nothing.
 
+## Screenshots
+
+`assets/` holds the images the manifest lists as `media`. They are rendered with react-native-web from the
+plugin's own components, using Paseo Dark's color values from `packages/app/src/styles/theme.ts`, not
+captured from the app. Replace them with captures from the app when you have them, and keep a wide image
+first in `media`, because the first image is the card thumbnail.
+
 ## Known limits
 
 - Archived helpers remain on disk and in the provider's session list. The plugin API exposes

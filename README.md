@@ -8,6 +8,8 @@ word, a phrase or a paragraph in a chat, click **Translate**, and the Explorer p
 - the grammar at work, explained,
 - reusable sentence patterns with examples.
 
+![A sentence result: translation, words and phrases, grammar, patterns](assets/screenshot-sentence.png)
+
 `OVERVIEW.md` is the page Paseo shows when you browse plugins. This file covers installing, using and
 developing it.
 
