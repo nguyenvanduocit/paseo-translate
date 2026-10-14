@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parsePartialJson } from "./partial-json";
 import { defaultSettings, type TranslateSettings } from "./settings";
 
 const plain = z.string().default("");
@@ -104,4 +105,31 @@ export function parseReply(final: string | null | undefined): ParsedReply {
   }
   const parsed = translationSchema.safeParse(json);
   return parsed.success ? { ok: true, value: parsed.data } : { ok: false, error: parsed.error.message };
+}
+
+// What a reply looks like while it streams: any field may be missing or cut short.
+const streamingSchema = z.object({
+  translation: plain,
+  pronunciation: plain,
+  breakdown: z.array(z.object({ term: plain, partOfSpeech: plain, meaning: plain, note: plain })).default([]),
+  grammar: z.array(z.object({ point: plain, explanation: plain })).default([]),
+  patterns: z.array(z.object({ pattern: plain, meaning: plain, example: plain })).default([]),
+  examples: z.array(plain).default([]),
+});
+
+/**
+ * The part of a streaming reply that has arrived, shaped like a `Translation`: strings may end mid-word, and an
+ * entry shows once its first field has started. Null until the translation itself has started.
+ */
+export function parsePartialReply(stream: string): Translation | null {
+  const parsed = streamingSchema.safeParse(parsePartialJson(stream));
+  if (!parsed.success || !parsed.data.translation) return null;
+  const { breakdown, grammar, patterns, examples, ...rest } = parsed.data;
+  return {
+    ...rest,
+    breakdown: breakdown.filter(item => item.term),
+    grammar: grammar.filter(item => item.point),
+    patterns: patterns.filter(item => item.pattern),
+    examples: examples.filter(Boolean),
+  };
 }

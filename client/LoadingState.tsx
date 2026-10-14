@@ -1,46 +1,35 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { fontSize } from "./typography";
 
 type Colors = Record<string, string>;
 
-const CYCLE_MS = 1600;
+const CYCLE_MS = 2600;
 // A lookup is a full agent turn and often takes 10 to 25 seconds; after this long the status line says so.
 const SLOW_AFTER_MS = 6000;
-// Each bar brightens for half a cycle, `PHASE_STEP` after the bar above it, so a wave runs down the skeleton.
-const PHASE_STEP = 0.07;
+const BADGE = 28;
 
-// The skeleton mirrors a result: translation, then a section title and two items. Widths are percentages of the panel.
-const BARS: { width: `${number}%`; height: number; gap?: number }[] = [
-  { width: "92%", height: 14 },
-  { width: "64%", height: 14 },
-  { width: "26%", height: 9, gap: 14 },
-  { width: "38%", height: 11 },
-  { width: "84%", height: 9 },
-  { width: "30%", height: 11, gap: 6 },
-  { width: "70%", height: 9 },
-];
+/** Value of `progress` over one cycle, given as [position in 0..1, value] keyframes. */
+function over(progress: Animated.Value, keyframes: [number, number][]) {
+  return progress.interpolate({ inputRange: keyframes.map(([at]) => at), outputRange: keyframes.map(([, value]) => value) });
+}
 
 function createStyles(colors: Colors) {
   return StyleSheet.create({
-    wrap: { gap: 10, paddingTop: 4 },
-    status: { flexDirection: "row", alignItems: "center", gap: 8 },
-    statusText: { color: colors.foregroundMuted, fontSize: fontSize.base },
-    bar: { borderRadius: 4, backgroundColor: colors.surface2 },
+    header: { flexDirection: "row", alignItems: "center", gap: 10 },
+    badgeSlot: { width: BADGE, height: BADGE, alignItems: "center", justifyContent: "center" },
+    ring: { position: "absolute", width: BADGE, height: BADGE, borderRadius: BADGE / 2, borderWidth: 1.5, borderColor: colors.accent },
+    badge: { width: BADGE, height: BADGE, borderRadius: BADGE / 2, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface1 },
+    status: { flex: 1, color: colors.foregroundMuted, fontSize: fontSize.base },
   });
 }
 
-function Wave({ progress, phase, style, children }: { progress: Animated.Value; phase: number; style?: object; children?: ReactNode }) {
-  const opacity = progress.interpolate({
-    inputRange: [0, phase, phase + 0.25, phase + 0.5, 1],
-    outputRange: [0.3, 0.3, 1, 0.3, 0.3],
-  });
-  return <Animated.View style={[style, { opacity }]}>{children}</Animated.View>;
-}
-
-/** Shown while a lookup is pending: a skeleton shaped like the result, pulsing in a wave, under a "Translating" line. */
-export function LoadingState({ colors }: { colors: Colors }) {
+/**
+ * Shown while a lookup is pending, below whatever has streamed in so far: a badge sending out ripples beside a status
+ * line. `waiting` is true until the first of the reply arrives; only then does the line say how long this can take.
+ */
+export function LoadingState({ colors, waiting }: { colors: Colors; waiting: boolean }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const progress = useRef(new Animated.Value(0)).current;
   const [slow, setSlow] = useState(false);
@@ -55,22 +44,25 @@ export function LoadingState({ colors }: { colors: Colors }) {
     loop.start();
     return () => loop.stop();
   }, [progress]);
+
+  // Two ripples half a cycle apart: the second starts mid-way through its growth and wraps around once.
+  const ringA = { opacity: over(progress, [[0, 0.5], [1, 0]]), transform: [{ scale: over(progress, [[0, 1], [1, 1.8]]) }] };
+  const ringB = {
+    opacity: over(progress, [[0, 0.25], [0.5, 0], [0.5001, 0.5], [1, 0.25]]),
+    transform: [{ scale: over(progress, [[0, 1.4], [0.5, 1.8], [0.5001, 1], [1, 1.4]]) }],
+  };
+  const badgeScale = over(progress, [[0, 1], [0.25, 1.08], [0.5, 1], [0.75, 1.08], [1, 1]]);
+
   return (
-    <View style={styles.wrap} accessibilityRole="progressbar" accessibilityLabel="Translating">
-      <View style={styles.status}>
-        <Wave progress={progress} phase={0}>
-          <Icon name="Languages" size={16} color={colors.foregroundMuted} />
-        </Wave>
-        <Text style={styles.statusText}>{slow ? "Still translating, this can take up to 30 seconds…" : "Translating…"}</Text>
+    <View style={styles.header} accessibilityRole="progressbar" accessibilityLabel="Translating">
+      <View style={styles.badgeSlot}>
+        <Animated.View style={[styles.ring, ringA]} />
+        <Animated.View style={[styles.ring, ringB]} />
+        <Animated.View style={[styles.badge, { transform: [{ scale: badgeScale }] }]}>
+          <Icon name="Languages" size={16} color={colors.foreground} />
+        </Animated.View>
       </View>
-      {BARS.map((bar, index) => (
-        <Wave
-          key={index}
-          progress={progress}
-          phase={PHASE_STEP * (index + 1)}
-          style={[styles.bar, { width: bar.width, height: bar.height, marginTop: bar.gap ?? 0 }]}
-        />
-      ))}
+      <Text style={styles.status}>{slow && waiting ? "Still translating, this can take up to 30 seconds…" : "Translating…"}</Text>
     </View>
   );
 }

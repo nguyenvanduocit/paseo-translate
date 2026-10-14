@@ -12,7 +12,9 @@ answers what each file does.
    `client.openPanel("translate", { workspaceId, location: "explorer" })`.
 3. `translator.ts` asks the daemon for the prompt (`translate.prompt` RPC), finds the workspace's
    most recent chat, and creates a helper agent in that workspace with the chat's provider.
-4. The helper answers with JSON. `parseReply` validates it, and the panel renders it.
+4. The helper answers with JSON that streams in as text. `translator.ts` subscribes to the helper's timeline,
+   `parsePartialReply` reads what has arrived, and the panel renders it as it grows. When the turn finishes,
+   `parseReply` validates the whole reply and replaces the partial view.
 5. A parse failure, or a helper that stops outside `idle`, retries once with a new helper, then the
    panel shows the error and a Retry button.
 
@@ -28,6 +30,16 @@ with `paseo.workspaces.ref(workspaceId).agents.create`, which places it in the e
 The helper's provider and `parent` come from the workspace's most recently updated agent that does
 not carry the `paseo-translate` label. A helper stuck on a permission request or a timeout never ends
 a turn, so `translator.ts` archives it explicitly.
+
+### The panel renders the reply as it streams
+
+A lookup takes 10 to 25 seconds, and the first text arrives after about 5. The helper's timeline carries the
+reply in small `assistant_message` chunks, and the reply's fields stream in schema order, so the translation is
+readable within seconds and the breakdown, grammar and patterns follow. `shared/partial-json.ts` closes an
+unfinished string, array and object, and drops a trailing key or literal that has not finished, so any prefix of the
+reply parses. `parsePartialReply` shows an entry once its first field starts. The streaming view is for display only:
+the validated final reply always replaces it, so a misread chunk corrects itself at the end. Subscribing is best
+effort; a failed subscription leaves the final reply from `waitForFinish`.
 
 ### The daemon builds the prompt
 
@@ -112,13 +124,14 @@ first in `media`, because the first image is the card thumbnail.
   `archive()` and no delete.
 - The helper is told not to use tools. The prompt enforces this, not the permission mode, because
   mode names differ per provider.
-- Each lookup is a full agent turn, roughly 10 to 25 seconds depending on provider and selection size.
+- Each lookup is a full agent turn, roughly 10 to 25 seconds depending on provider and selection size. The result
+  streams in from about the fifth second.
 - The button appears for any valid selection on a workspace page, not only inside the chat.
 
 ## Testing
 
-`npm test` covers `shared/`: selection rules, context extraction, prompt building, reply parsing and
-inline markup. These are pure functions and need no mocks beyond `defineSettings`.
+`npm test` covers `shared/`: selection rules, context extraction, prompt building, reply parsing, partial reply
+parsing and inline markup. These are pure functions and need no mocks beyond `defineSettings`.
 
 Before a release:
 
@@ -128,8 +141,8 @@ Before a release:
 3. In the web app and the desktop app, in a dark and a light theme:
    - Select one word, a phrase and a paragraph. The button appears on release and not while dragging.
    - Select with Shift+Arrow and with Cmd/Ctrl+A. The button appears on key release.
-   - Click Translate. The panel opens and the result fills in; a paragraph shows its original above
-     the translation.
+   - Click Translate. The panel opens, the translation appears within a few seconds and the breakdown,
+     grammar and patterns fill in below it; a paragraph shows its original above the translation.
    - Select text inside the panel. No button appears.
    - Translate a second selection while the first is loading. Only the second result stays.
    - Open the settings from the gear, change the prompt and the extra instructions, save, and run

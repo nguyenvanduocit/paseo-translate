@@ -1,5 +1,5 @@
 import type { PaseoApi } from "@getpaseo/client";
-import { parseReply, replyJsonSchema, systemPrompt, type Candidate, type Translation } from "../shared/translate";
+import { parsePartialReply, parseReply, replyJsonSchema, systemPrompt, type Candidate, type Translation } from "../shared/translate";
 import { getLookup, setLatestLookup, updateLookup } from "./lookups";
 
 // Marks the helper agents so they can be told apart from the user's own agents.
@@ -26,8 +26,8 @@ async function findSession(paseo: PaseoApi, workspaceId: string) {
   return session;
 }
 
-/** A helper agent answers one lookup: `autoArchive` archives it after its first turn, so each lookup creates its own. */
-async function translate({ paseo, requestPrompt }: TranslatorDeps, workspaceId: string, candidate: Candidate): Promise<Translation> {
+/** A helper agent answers one lookup: `autoArchive` archives it after its first turn, so each lookup creates its own. The lookup shows the reply as it streams in. */
+async function translate({ paseo, requestPrompt }: TranslatorDeps, lookupId: string, workspaceId: string, candidate: Candidate): Promise<Translation> {
   const { prompt } = await requestPrompt(candidate);
   const session = await findSession(paseo, workspaceId);
   const provider = session.model ? `${session.provider}/${session.model}` : session.provider;
@@ -42,7 +42,17 @@ async function translate({ paseo, requestPrompt }: TranslatorDeps, workspaceId: 
       outputSchema: replyJsonSchema,
       prompt,
     });
-    const result = await helper.waitForFinish(waitMs);
+    let streamed = "";
+    updateLookup(lookupId, { translation: undefined });
+    const subscription = helper.timeline.subscribe(({ event }) => {
+      if (event.type !== "timeline" || event.item.type !== "assistant_message") return;
+      streamed += event.item.text;
+      const partial = parsePartialReply(streamed);
+      if (partial) updateLookup(lookupId, { translation: partial });
+    });
+    // Streaming is for show: a subscription that fails to attach leaves the final reply to `waitForFinish`.
+    subscription.ready.catch(() => undefined);
+    const result = await helper.waitForFinish(waitMs).finally(subscription);
     if (result.status !== "idle") {
       // A helper stuck on a permission request or a timeout never finishes its turn, so autoArchive never fires.
       await helper.archive().catch(() => undefined);
@@ -60,7 +70,7 @@ async function settle(deps: TranslatorDeps, id: string) {
   const lookup = getLookup(id);
   if (!lookup) return;
   try {
-    const translation = await translate(deps, lookup.workspaceId, lookup);
+    const translation = await translate(deps, id, lookup.workspaceId, lookup);
     updateLookup(id, { status: "done", translation, error: undefined });
   } catch (error) {
     updateLookup(id, { status: "error", error: error instanceof Error ? error.message : String(error) });
@@ -74,6 +84,6 @@ export function startLookup(deps: TranslatorDeps, input: Candidate & { workspace
 }
 
 export function retryLookup(deps: TranslatorDeps, id: string) {
-  updateLookup(id, { status: "loading", error: undefined });
+  updateLookup(id, { status: "loading", error: undefined, translation: undefined });
   void settle(deps, id);
 }

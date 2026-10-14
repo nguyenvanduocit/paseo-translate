@@ -34,7 +34,7 @@ from the app instead. Update with `paseo plugin update translate`.
 
 1. Select text in a chat. The button appears when you release the mouse, or the key after a
    Shift+Arrow or Cmd/Ctrl+A selection.
-2. Click **Translate**. The Explorer panel opens and shows the result when the lookup finishes.
+2. Click **Translate**. The Explorer panel opens and fills in as the helper writes: the translation first, then the breakdown, grammar and patterns.
 3. The panel shows the latest result for the workspace; the next lookup replaces it. The gear opens the settings.
 
 The result lives in memory and is gone after an app reload. A failed lookup shows its error and a Retry button.
@@ -61,7 +61,7 @@ its first answer. See [docs/design.md](docs/design.md) for the decisions behind 
 
 ## Known limits
 
-- A lookup takes roughly 10 to 25 seconds, because each one is a full agent turn.
+- A lookup takes roughly 10 to 25 seconds, because each one is a full agent turn. The result starts to appear after about 5.
 - Archived helpers stay in `~/.paseo/agents` and in the provider's session list. The plugin API has
   no delete call. `paseo ls -a -g --label paseo-translate=1` lists them and `paseo delete <id>` removes one.
 - Helpers are told not to use tools. That is an instruction, not an enforced restriction.

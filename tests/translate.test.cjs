@@ -150,3 +150,51 @@ test('text without marks is one plain span, and an unmatched mark stays literal'
   assert.deepEqual(parseInline('2 ** 3 and `open'), [{ text: '2 ** 3 and `open' }]);
   assert.deepEqual(parseInline(''), []);
 });
+
+const { parsePartialJson } = loadTs('shared/partial-json.ts', mocks);
+const { parsePartialReply } = shared;
+const fullReply = JSON.stringify({
+  translation: 'Bản sửa tài liệu "đã" commit',
+  pronunciation: '',
+  breakdown: [{ term: 'doc fix', partOfSpeech: 'noun phrase', meaning: 'bản sửa tài liệu', note: '' }],
+  grammar: [{ point: 'Passive', explanation: 'Bị động' }],
+  patterns: [],
+  examples: ['One', 'Two'],
+});
+
+test('every prefix of a reply parses to an object or to nothing, never throws', () => {
+  for (let end = 0; end <= fullReply.length; end++) {
+    const value = parsePartialJson(fullReply.slice(0, end));
+    assert.ok(value === undefined || (typeof value === 'object' && value !== null), `prefix ${end}`);
+  }
+  assert.deepEqual(parsePartialJson(fullReply), JSON.parse(fullReply));
+});
+
+test('a string cut mid-way keeps the characters that arrived, and a key without a value is dropped', () => {
+  assert.deepEqual(parsePartialJson('{"translation":"Bản sử'), { translation: 'Bản sử' });
+  assert.deepEqual(parsePartialJson('{"translation":"x","pronunciation"'), { translation: 'x' });
+  assert.deepEqual(parsePartialJson('{"translation":"x","breakdown":[{"term":"a"},{"te'), { translation: 'x', breakdown: [{ term: 'a' }, {}] });
+  assert.deepEqual(parsePartialJson('{"translation":"a\\'), { translation: 'a' });
+  assert.deepEqual(parsePartialJson('{"translation":"a\\u00'), { translation: 'a' });
+  assert.deepEqual(parsePartialJson('{"a":tru'), {});
+});
+
+test('text before the object and braces inside strings are handled', () => {
+  assert.deepEqual(parsePartialJson('```json\n{"translation":"{x}'), { translation: '{x}' });
+  assert.equal(parsePartialJson('no object yet'), undefined);
+});
+
+test('a streaming reply shows nothing until the translation starts, then grows with the stream', () => {
+  assert.equal(parsePartialReply('{"translation":"'), null);
+  assert.equal(parsePartialReply('{"translation":"B')?.translation, 'B');
+  const midway = parsePartialReply(fullReply.slice(0, fullReply.indexOf('"note"')));
+  assert.equal(midway.breakdown.length, 1);
+  assert.equal(midway.breakdown[0].meaning, 'bản sửa tài liệu');
+  assert.deepEqual(midway.grammar, []);
+});
+
+test('a streaming reply hides an entry until its first field starts, and the finished reply equals the validated one', () => {
+  assert.deepEqual(parsePartialReply('{"translation":"x","breakdown":[{"term":"').breakdown, []);
+  assert.equal(parsePartialReply('{"translation":"x","breakdown":[{"term":"d').breakdown[0].term, 'd');
+  assert.deepEqual(parsePartialReply(fullReply), shared.parseReply(fullReply).value);
+});

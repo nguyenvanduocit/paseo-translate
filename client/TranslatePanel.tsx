@@ -22,7 +22,8 @@ function createStyles(theme: Theme, compact: boolean) {
     barLabel: { color: theme.colors.foregroundMuted, fontSize: fontSize.base },
     iconButton: { padding: 6, borderRadius: 6 },
     head: { flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
-    original: { color: theme.colors.foreground, fontSize: fontSize.content, lineHeight: 22 },
+    thread: { gap: 12, borderLeftWidth: 3, borderLeftColor: theme.colors.accent, paddingLeft: 12, paddingVertical: 2 },
+    original: { color: theme.colors.foreground, fontSize: fontSize.lg, fontWeight: "600", lineHeight: 24 },
     word: { color: theme.colors.foreground, fontSize: fontSize.xl, fontWeight: "600" },
     pos: { color: theme.colors.foregroundMuted, fontSize: fontSize.base, fontStyle: "italic" },
     error: { color: theme.colors.statusDanger, fontSize: fontSize.base },
@@ -39,16 +40,18 @@ function Result({ lookup, deps, styles, theme }: { lookup: Lookup; deps: Transla
   const short = isShort(lookup.text);
   return (
     <>
-      {short ? (
-        <View style={styles.head}>
-          <Text style={styles.word}>{lookup.text}</Text>
-          {translation?.pronunciation ? <Text style={styles.pos}>{translation.pronunciation}</Text> : null}
-        </View>
-      ) : (
-        <Text numberOfLines={4} style={styles.original}>{lookup.text}</Text>
-      )}
-      {lookup.status === "loading" ? <LoadingState colors={theme.colors} /> : null}
+      <View style={styles.thread}>
+        {short ? (
+          <View style={styles.head}>
+            <Text style={styles.word}>{lookup.text}</Text>
+            {translation?.pronunciation ? <Text style={styles.pos}>{translation.pronunciation}</Text> : null}
+          </View>
+        ) : (
+          <Text numberOfLines={4} style={styles.original}>{lookup.text}</Text>
+        )}
+      </View>
       {translation ? <FadeIn gap={styles.content.gap}><ResultView result={translation} short={short} theme={theme} /></FadeIn> : null}
+      {lookup.status === "loading" ? <LoadingState colors={theme.colors} waiting={!translation} /> : null}
       {lookup.status === "error" ? (
         <FadeIn gap={styles.content.gap}>
           <Text style={styles.error}>{lookup.error}</Text>
