@@ -54,7 +54,7 @@ function Result({ lookup, deps, styles, theme }: { lookup: Lookup; deps: Transla
         )}
       </View>
       {translation ? <FadeIn gap={styles.content.gap}><ResultView result={translation} short={short} theme={theme} /></FadeIn> : null}
-      {lookup.status === "loading" ? <LoadingState colors={theme.colors} waiting={!translation} /> : null}
+      {lookup.status === "loading" && !translation ? <LoadingState colors={theme.colors} /> : null}
       {lookup.status === "error" ? (
         <FadeIn gap={styles.content.gap}>
           <Text style={styles.error}>{lookup.error}</Text>

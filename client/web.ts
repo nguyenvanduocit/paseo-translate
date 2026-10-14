@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import { candidateFromSelection, sentenceRadius, type Candidate } from "../shared/translate";
+import { candidateFromSelection, sentenceRadius, wordEnd, wordStart, type Candidate } from "../shared/translate";
 
 // This plugin typechecks without the DOM library. Declare only what this module uses.
 interface DomNode { nodeType: number; parentElement: DomElement | null }
@@ -10,7 +10,15 @@ interface DomElement extends DomNode {
   remove(): void;
 }
 interface DomRect { left: number; top: number; bottom: number; width: number; height: number }
-interface DomRange { commonAncestorContainer: DomNode; getBoundingClientRect(): DomRect }
+interface DomText extends DomNode { data: string }
+interface DomRange {
+  commonAncestorContainer: DomNode;
+  startContainer: DomNode;
+  startOffset: number;
+  endContainer: DomNode;
+  endOffset: number;
+  getBoundingClientRect(): DomRect;
+}
 interface DomSelection {
   rangeCount: number;
   isCollapsed: boolean;
@@ -50,6 +58,7 @@ declare class TextDecoder {
 }
 
 const elementNode = 1;
+const textNode = 3;
 
 // The plugin SDK has no text-selection API and `<Text selectable>` exposes no selection state, so
 // the selection comes from the browser's own events. Electron and the web app have them; the native
@@ -96,13 +105,21 @@ function blockText(container: DomElement, selected: string): string {
   return element.innerText ?? selected;
 }
 
+/** The selected text widened to whole words when the range starts or ends inside one. The selection itself is left as the user made it. */
+function wholeWords(range: DomRange, selected: string): string {
+  const { startContainer, startOffset, endContainer, endOffset } = range;
+  const head = startContainer.nodeType === textNode ? (startContainer as DomText).data.slice(wordStart((startContainer as DomText).data, startOffset), startOffset) : "";
+  const tail = endContainer.nodeType === textNode ? (endContainer as DomText).data.slice(endOffset, wordEnd((endContainer as DomText).data, endOffset)) : "";
+  return head + selected + tail;
+}
+
 function readSelection(ignored: string): { request: SelectionRequest; rect: DomRect } | null {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
   const range = selection.getRangeAt(0);
   const container = elementOf(range.commonAncestorContainer);
   if (!container || container.closest(editable) || container.closest(ignored)) return null;
-  const selected = selection.toString();
+  const selected = wholeWords(range, selection.toString());
   const candidate = candidateFromSelection({ selected, block: blockText(container, selected) });
   const workspaceId = workspaceIdFromLocation();
   const rect = range.getBoundingClientRect();

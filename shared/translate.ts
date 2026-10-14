@@ -34,6 +34,35 @@ const edgePunctuation = /^[\s"'“”‘’.,;:!?()[\]…—–-]+|[\s"'“”�
 
 const collapse = (value: string) => value.replace(/\s+/g, " ").trim();
 
+// A word is letters, digits and marks; an apostrophe or hyphen joins two letters inside one ("don't", "well-known").
+const wordChar = /[\p{L}\p{N}\p{M}]/u;
+const joiner = /['’-]/;
+// A guard against a "word" that never ends (a long URL, a hash), which is left as the user selected it.
+const maxWordLength = 40;
+
+function inWord(text: string, index: number): boolean {
+  const char = text[index];
+  if (char === undefined) return false;
+  if (wordChar.test(char)) return true;
+  return joiner.test(char) && wordChar.test(text[index - 1] ?? "") && wordChar.test(text[index + 1] ?? "");
+}
+
+/** The bounds of the word that `offset` falls inside, or null on a boundary or inside a word too long to be one. */
+function wordAround(text: string, offset: number): [number, number] | null {
+  if (!inWord(text, offset - 1) || !inWord(text, offset)) return null;
+  let start = offset;
+  let end = offset;
+  while (start > 0 && inWord(text, start - 1)) start--;
+  while (end < text.length && inWord(text, end)) end++;
+  return end - start <= maxWordLength ? [start, end] : null;
+}
+
+/** `offset` moved back to the start of the word it falls inside; unchanged on a boundary. */
+export const wordStart = (text: string, offset: number) => wordAround(text, offset)?.[0] ?? offset;
+
+/** `offset` moved forward to the end of the word it falls inside; unchanged on a boundary. */
+export const wordEnd = (text: string, offset: number) => wordAround(text, offset)?.[1] ?? offset;
+
 /** The selection plus the text around it, or null when there is nothing worth translating. */
 export function candidateFromSelection(input: { selected: string; block: string }): Candidate | null {
   const text = collapse(input.selected).replace(edgePunctuation, "");

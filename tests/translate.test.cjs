@@ -198,3 +198,30 @@ test('a streaming reply hides an entry until its first field starts, and the fin
   assert.equal(parsePartialReply('{"translation":"x","breakdown":[{"term":"d').breakdown[0].term, 'd');
   assert.deepEqual(parsePartialReply(fullReply), shared.parseReply(fullReply).value);
 });
+
+const { wordStart, wordEnd } = shared;
+
+test('a boundary inside a word moves to the edge of that word', () => {
+  const text = 'The committee will deliberate';
+  assert.equal(wordStart(text, 7), 4);
+  assert.equal(wordEnd(text, 7), 13);
+  assert.equal(wordStart(text, 4), 4);
+  assert.equal(wordEnd(text, 13), 13);
+  assert.equal(wordStart(text, 0), 0);
+  assert.equal(wordEnd(text, text.length), text.length);
+});
+
+test('an apostrophe or hyphen between letters belongs to the word, one at the edge does not', () => {
+  assert.equal(wordEnd("they don't go", 7), 10);
+  assert.equal(wordStart('a well-known fact', 8), 2);
+  assert.equal(wordEnd("'quoted' word", 3), 7);
+  assert.equal(wordStart('x - y', 3), 3);
+});
+
+test('accented letters and digits are word characters, and a word that never ends is left alone', () => {
+  assert.equal(wordEnd('Việt Nam', 2), 4);
+  assert.equal(wordStart('commit 725a153 now', 10), 7);
+  const hash = 'a'.repeat(60);
+  assert.equal(wordStart(hash, 30), 30);
+  assert.equal(wordEnd(hash, 30), 30);
+});

@@ -68,6 +68,10 @@ ceiling guards against a select-all sending a whole page to a model. It is not a
 Selections inside inputs, contenteditable elements and the Translate panel are ignored, so results
 cannot be translated again.
 
+A drag that starts or ends inside a word clips it. `wholeWords` in `client/web.ts` widens the text sent to the
+helper to whole words with `wordStart` and `wordEnd`. The user's selection and its highlight stay as made. A boundary
+already between words stays. A word longer than 40 characters, such as a URL or a hash, stays as selected.
+
 The context sent with a selection is up to 400 characters on each side. A selection longer than 400
 characters is its own context.
 

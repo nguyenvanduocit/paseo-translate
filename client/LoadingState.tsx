@@ -25,11 +25,8 @@ function createStyles(colors: Colors) {
   });
 }
 
-/**
- * Shown while a lookup is pending, below whatever has streamed in so far: a badge sending out ripples beside a status
- * line. `waiting` is true until the first of the reply arrives; only then does the line say how long this can take.
- */
-export function LoadingState({ colors, waiting }: { colors: Colors; waiting: boolean }) {
+/** Shown while a lookup waits for the first of the reply: a badge sending out ripples beside a status line. */
+export function LoadingState({ colors }: { colors: Colors }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const progress = useRef(new Animated.Value(0)).current;
   const [slow, setSlow] = useState(false);
@@ -62,7 +59,7 @@ export function LoadingState({ colors, waiting }: { colors: Colors; waiting: boo
           <Icon name="Languages" size={16} color={colors.foreground} />
         </Animated.View>
       </View>
-      <Text style={styles.status}>{slow && waiting ? "Still translating, this can take up to 30 seconds…" : "Translating…"}</Text>
+      <Text style={styles.status}>{slow ? "Still translating, this can take up to 30 seconds…" : "Translating…"}</Text>
     </View>
   );
 }
