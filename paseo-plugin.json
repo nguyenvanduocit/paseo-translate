@@ -1,6 +1,13 @@
 {
   "id": "translate",
   "name": "Translate",
+  "description": "Translate selected text in a Paseo chat and learn from it: a word-by-word breakdown, grammar notes and sentence patterns.",
+  "media": [
+    "assets/screenshot-button.png",
+    "assets/screenshot-sentence.png",
+    "assets/screenshot-word.png",
+    "assets/screenshot-empty.png"
+  ],
   "requirements": {
     "paseo": ">=0.11.2"
   }
