@@ -1,0 +1,117 @@
+# Design
+
+Select text in a Paseo chat, click Translate, and read a lesson in the Explorer panel: translation,
+breakdown, grammar, patterns. This doc records the decisions and the reasons for them. The code
+answers what each file does.
+
+## Flow
+
+1. `client/web.ts` decides, when the user releases the mouse or a selection key, whether the
+   selection is worth offering. It shows the floating button next to the range.
+2. A click calls `startLookup`, which adds a loading card to the store and opens the panel with
+   `client.openPanel("translate", { workspaceId, location: "explorer" })`.
+3. `translator.ts` asks the daemon for the prompt (`translate.prompt` RPC), finds the workspace's
+   most recent chat, and creates a helper agent in that workspace with the chat's provider.
+4. The helper answers with JSON. `parseReply` validates it, and the card renders it.
+5. A parse failure, or a helper that stops outside `idle`, retries once with a new helper, then the
+   card shows the error and a Retry button.
+
+## Decisions
+
+### One helper agent per lookup
+
+`autoArchive` archives an agent after its first terminal turn, so a helper cannot serve a second
+lookup. Each lookup creates its own, which also lets lookups run in parallel. The helper is created
+with `paseo.workspaces.ref(workspaceId).agents.create`, which places it in the existing workspace.
+`paseo.agents.create` makes a fresh workspace for the `cwd`.
+
+The helper's provider and `parent` come from the workspace's most recently updated agent that does
+not carry the `paseo-translate` label. A helper stuck on a permission request or a timeout never ends
+a turn, so `translator.ts` archives it explicitly.
+
+### The daemon builds the prompt
+
+Settings are read with the `useSettings` hook, and the selection handler is plain DOM code outside
+React. The daemon holds the settings document, so the client asks it for the finished prompt
+through the `translate.prompt` RPC. `index.server.ts` reads the document and calls `buildPrompt`.
+
+### Prompt template, then a fixed reply format
+
+`buildPrompt` joins three parts: the user's template (or the default), the reply format, and the
+extra instructions. The template holds the teaching approach and the target language, so changing
+either means editing text. The reply format always follows it, so a custom template cannot break
+parsing. Placeholders are filled in one pass, so a selection that contains `{{sentence}}` stays literal.
+
+### Structured reply, rendered by the panel
+
+The helper replies with JSON that matches `translationSchema` in `shared/translate.ts`. The same schema
+goes to the provider as `outputSchema`. Strings and arrays default to empty so a reply that omits an
+empty field still parses. Text fields may contain `**bold**` and `` `code` ``; `shared/rich-text.ts`
+parses them and `ResultView` renders them.
+
+### Selection rules
+
+`candidateFromSelection` accepts any selection with at least one letter, up to 5000 characters. The
+ceiling guards against a select-all sending a whole page to a model. It is not a product limit.
+Selections inside inputs, contenteditable elements and the Translate panel are ignored, so results
+cannot be translated again.
+
+The context sent with a selection is up to 400 characters on each side. A selection longer than 400
+characters is its own context.
+
+### The trigger is mouse release
+
+`selectionchange` fires continuously while dragging, so the button would flicker. `web.ts` decides on
+`mouseup` and on `keyup` for Shift+Arrow, Shift alone and Cmd/Ctrl+A. `mousedown` outside the button
+hides it, and `selectionchange` only hides it when the selection collapses.
+
+### The workspace id comes from the route
+
+`client.openPanel` requires a `workspaceId`, and a DOM handler has no other source for the current
+workspace. `workspaceIdFromLocation` reads `/workspace/<id>` from the page URL and decodes the `b64_`
+prefix that the app uses for ids that are not URL-safe. It is the one place that depends on the app's
+route shape.
+
+### Styling follows Paseo's theme variables
+
+The floating button is DOM, outside React, so `theme.colors` is not available to it. Paseo's
+Unistyles layer publishes every theme color as `--colors-<name>` on the root element and swaps them
+with the theme. The button uses the composer pill's tokens: `surface1` background, `border-accent`
+border, `foreground-muted` text, `surface2` and `foreground` on hover. CSS system colors are the
+fallback on a host that does not publish the variables. The panel and settings screen use
+`theme.colors` from props.
+
+### Browser APIs live in one file
+
+The project typechecks without the DOM library. `client/web.ts` declares the few globals it uses and
+gates the listener on `Platform.OS === "web"`; on native it does nothing.
+
+## Known limits
+
+- Archived helpers remain on disk and in the provider's session list. The plugin API exposes
+  `archive()` and no delete.
+- The helper is told not to use tools. The prompt enforces this, not the permission mode, because
+  mode names differ per provider.
+- Each lookup is a full agent turn, roughly 10 to 25 seconds depending on provider and selection size.
+- The button appears for any valid selection on a workspace page, not only inside the chat.
+
+## Testing
+
+`npm test` covers `shared/`: selection rules, context extraction, prompt building, reply parsing and
+inline markup. These are pure functions and need no mocks beyond `defineSettings`.
+
+Before a release:
+
+1. `npm run typecheck`, `npm test`, and the DOM audit in the README.
+2. `paseo plugin install "$PWD"`, then `paseo plugin ls` shows `translate` as `running`, and
+   `paseo plugin logs translate` ends with `Plugin ready`.
+3. In the web app and the desktop app, in a dark and a light theme:
+   - Select one word, a phrase and a paragraph. The button appears on release and not while dragging.
+   - Select with Shift+Arrow and with Cmd/Ctrl+A. The button appears on key release.
+   - Click Translate. The panel opens and the card fills in; a paragraph card shows its original in
+     small text.
+   - Select text inside a card. No button appears.
+   - Open the settings from the gear, change the prompt and the extra instructions, save, and run
+     another lookup.
+   - Confirm the chat's own timeline gains no entries from lookups.
+4. Check the compact layout.
