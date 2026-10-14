@@ -1,8 +1,10 @@
 import { usePaseo, useRpc, type PluginWorkspacePanelProps } from "@getpaseo/plugin/client";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useMemo } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { EmptyState } from "./EmptyState";
+import { FadeIn } from "./FadeIn";
+import { LoadingState } from "./LoadingState";
 import { ResultView } from "./ResultView";
 import { fontSize } from "./typography";
 import { useLatestLookup, type Lookup } from "./lookups";
@@ -45,15 +47,15 @@ function Result({ lookup, deps, styles, theme }: { lookup: Lookup; deps: Transla
       ) : (
         <Text numberOfLines={4} style={styles.original}>{lookup.text}</Text>
       )}
-      {lookup.status === "loading" ? <ActivityIndicator color={theme.colors.foregroundMuted} style={{ alignSelf: "flex-start" }} /> : null}
-      {translation ? <ResultView result={translation} short={short} theme={theme} /> : null}
+      {lookup.status === "loading" ? <LoadingState colors={theme.colors} /> : null}
+      {translation ? <FadeIn gap={styles.content.gap}><ResultView result={translation} short={short} theme={theme} /></FadeIn> : null}
       {lookup.status === "error" ? (
-        <>
+        <FadeIn gap={styles.content.gap}>
           <Text style={styles.error}>{lookup.error}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={`Retry translating ${lookup.text}`} onPress={() => retryLookup(deps, lookup.id)} style={styles.retry}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
-        </>
+        </FadeIn>
       ) : null}
     </>
   );
