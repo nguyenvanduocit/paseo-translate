@@ -1,0 +1,42 @@
+{
+  "name": "paseo-translate",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Select text in a Paseo chat and get a translation with a word-by-word breakdown, grammar notes and sentence patterns.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nguyenvanduocit/paseo-translate.git"
+  },
+  "keywords": [
+    "paseo",
+    "paseo-plugin",
+    "translate",
+    "english",
+    "language-learning"
+  ],
+  "files": [
+    "paseo-plugin.json",
+    "OVERVIEW.md",
+    "index.client.ts",
+    "index.client.tsx",
+    "index.server.ts",
+    "index.server.tsx",
+    "client/",
+    "server/",
+    "shared/"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "devDependencies": {
+    "@getpaseo/client": "0.11.2",
+    "@getpaseo/plugin": "0.11.2",
+    "@types/react": "~19.2.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "typescript": "^5.9.3",
+    "zod": "^4.4.3"
+  }
+}

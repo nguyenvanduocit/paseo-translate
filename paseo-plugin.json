@@ -1,0 +1,7 @@
+{
+  "id": "translate",
+  "name": "Translate",
+  "requirements": {
+    "paseo": ">=0.11.2"
+  }
+}
