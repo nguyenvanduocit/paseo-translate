@@ -1,9 +1,10 @@
-import { useSettings, type PluginSurfaceProps, type SettingsState } from "@getpaseo/plugin/client";
+import { openExternalUrl, useSettings, type PluginSurfaceProps, type SettingsState } from "@getpaseo/plugin/client";
 import { SettingsAction, SettingsCard, SettingsSection } from "@getpaseo/plugin/client/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { translateSettings, type TranslateSettings } from "../shared/settings";
 import { defaultPromptTemplate } from "../shared/translate";
+import { discordUrl, donateUrl } from "./links";
 import { fontSize } from "./typography";
 
 type Ready = Extract<SettingsState<typeof translateSettings.schema>, { status: "ready" }>;
@@ -102,6 +103,13 @@ function Editor({ settings, theme }: { settings: Ready; theme: Theme }) {
         {!dirty && !settings.saveError ? <Text style={styles.status}>Saved</Text> : null}
         {settings.saveError ? <Text accessibilityRole="alert" style={styles.error}>{settings.saveError}</Text> : null}
       </View>
+
+      <SettingsSection title="Support and community">
+        <SettingsCard>
+          <SettingsAction label="Donate via PayPal" hint="Translate is free and open source. A donation helps keep it maintained." actionLabel="Donate" onPress={() => void openExternalUrl(donateUrl)} />
+          <SettingsAction label="Join the Discord" hint="Ask questions, report problems and share ideas." actionLabel="Join" onPress={() => void openExternalUrl(discordUrl)} />
+        </SettingsCard>
+      </SettingsSection>
     </>
   );
 }

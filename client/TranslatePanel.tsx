@@ -1,9 +1,11 @@
-import { usePaseo, useRpc, type PluginWorkspacePanelProps } from "@getpaseo/plugin/client";
+import { openExternalUrl, usePaseo, useRpc, type PluginWorkspacePanelProps } from "@getpaseo/plugin/client";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { DiscordIcon } from "./DiscordIcon";
 import { EmptyState } from "./EmptyState";
 import { FadeIn } from "./FadeIn";
+import { discordUrl, donateUrl } from "./links";
 import { LoadingState } from "./LoadingState";
 import { ResultView } from "./ResultView";
 import { fontSize } from "./typography";
@@ -20,6 +22,7 @@ function createStyles(theme: Theme, compact: boolean) {
     content: { padding: compact ? 12 : 16, gap: compact ? 8 : 12 },
     bar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: compact ? 12 : 16, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     barLabel: { color: theme.colors.foregroundMuted, fontSize: fontSize.base },
+    barActions: { flexDirection: "row", alignItems: "center" },
     iconButton: { padding: 6, borderRadius: 6 },
     head: { flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
     thread: { gap: 12, borderLeftWidth: 3, borderLeftColor: theme.colors.accent, paddingLeft: 12, paddingVertical: 2 },
@@ -77,9 +80,17 @@ export function TranslatePanel({ theme, layout, onOpenSettings, workspaceId }: P
     <View testID={panelTestId} style={styles.screen}>
       <View style={styles.bar}>
         <Text style={styles.barLabel}>Translate</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Translate settings" onPress={onOpenSettings} style={styles.iconButton}>
-          <Icon name="Settings" size={16} color={theme.colors.foregroundMuted} />
-        </Pressable>
+        <View style={styles.barActions}>
+          <Pressable accessibilityRole="link" accessibilityLabel="Donate via PayPal" onPress={() => void openExternalUrl(donateUrl)} style={styles.iconButton}>
+            <Icon name="Heart" size={16} color={theme.colors.foregroundMuted} />
+          </Pressable>
+          <Pressable accessibilityRole="link" accessibilityLabel="Join the Discord" onPress={() => void openExternalUrl(discordUrl)} style={styles.iconButton}>
+            <DiscordIcon size={16} color={theme.colors.foregroundMuted} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Translate settings" onPress={onOpenSettings} style={styles.iconButton}>
+            <Icon name="Settings" size={16} color={theme.colors.foregroundMuted} />
+          </Pressable>
+        </View>
       </View>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         {lookup ? <Result lookup={lookup} deps={deps} styles={styles} theme={theme} /> : <EmptyState colors={theme.colors} />}

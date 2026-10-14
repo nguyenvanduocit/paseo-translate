@@ -10,3 +10,7 @@ Open the plugin's settings from the gear in the panel, or under Settings, Plugin
 - **Extra instructions** are appended to every prompt, for example a subject area to prefer.
 
 Known limits: a lookup takes roughly 10 to 25 seconds because a full agent turn runs for each one. Archived helpers stay in your agent history and in the provider's session list, and Paseo's plugin API has no way to delete them. Helpers are told not to use tools, and that is enforced by instruction only. Selections over 5000 characters are ignored.
+
+Translate is free and open source. To support its development, donate via PayPal: https://paypal.me/duocnguyen
+
+Join the community on Discord: https://discord.gg/W2c3TgQXS
