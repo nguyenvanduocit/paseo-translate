@@ -11,12 +11,18 @@ type Corrected = Extract<FeedbackRowData, { state: "corrected" }>;
 
 const PULSE_MS = 700;
 
+// Host layout this row is placed against, measured in the Paseo 0.13.0 web client at desktop width and at 390 px
+// (dark and light): the user's timeline item ends with its message action row (timestamp, rewind, copy), and the
+// host then leaves 16 px before the next timeline item, this row. After a Paseo update, re-measure the distance from
+// the bubble's bottom to this row's top and the action row's size, and update these numbers.
+const hostItemSpacing = 16;
+
 function createStyles({ colors }: Theme, compact: boolean) {
   const size = compact ? fontSize.sm : fontSize.base - 1;
   return StyleSheet.create({
-    // Right-aligned like the user's bubble above it, so it reads as part of the message, not of the reply. No top
-    // margin: the host already leaves its message action row and item spacing (48 px) between the bubble and this row.
-    row: { alignSelf: "flex-end", maxWidth: "100%", marginHorizontal: compact ? 2 : 4, gap: 4 },
+    // Right-aligned like the user's bubble above it, so it reads as part of the message, not of the reply. It takes
+    // back the host's item spacing, so it starts right under the message's action row without overlapping it.
+    row: { alignSelf: "flex-end", maxWidth: "100%", marginTop: -hostItemSpacing, marginHorizontal: compact ? 2 : 4, gap: 4 },
     muted: { color: colors.foregroundMuted, fontSize: size, lineHeight: size + 7 },
     diff: { color: colors.foreground, fontSize: size, lineHeight: size + 7 },
     pen: { color: colors.accent },
