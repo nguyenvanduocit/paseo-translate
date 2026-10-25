@@ -99,8 +99,10 @@ times out. The spike behind this design is in [docs/feedback-spike.md](docs/feed
 - Selections over 5000 characters are ignored.
 - English feedback sends the message text to Claude Haiku on the host that owns the chat.
 - A message steered into a turn that is still running starts no new turn, so it is not checked.
-- Feedback rows live in the daemon's memory and are gone after a daemon restart. If the plugin is
-  removed, earlier rows show Paseo's "Plugin timeline item unavailable" placeholder.
+- Feedback rows live in the daemon's memory and are gone after a daemon restart or an agent reload
+  (`paseo agent reload`); the message is not checked again. If the plugin is removed, or the host
+  goes back to a version without English feedback, earlier rows show Paseo's "Plugin timeline item
+  unavailable" placeholder.
 - The helper runs in the chat's directory, so it loads that project's Claude Code hooks and
   `CLAUDE.md`, but not its MCP servers (`--strict-mcp-config`). A project whose hooks take most of the
   25 second budget leaves too little time for the check; that message then gets no feedback.

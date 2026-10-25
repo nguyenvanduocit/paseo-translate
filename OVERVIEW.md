@@ -14,7 +14,7 @@ Open the plugin's settings from the gear in the panel, or under Settings, Plugin
 - **Extra instructions** are appended to every prompt, for example a subject area to prefer.
 - **Check my English** turns the English check on or off. It is on by default and applies to the chats of that host only; with several hosts connected, set it on each one.
 
-Known limits: a lookup takes roughly 10 to 25 seconds because a full agent turn runs for each one. Archived helpers stay in your agent history and in the provider's session list, and Paseo's plugin API has no way to delete them. Helpers are told not to use tools, and that is enforced by instruction only. Selections over 5000 characters are ignored. The English check is chat feedback, not a full proofreader: a message added while the agent is still working is not checked, and the results live in the daemon's memory, so they are gone after a daemon restart.
+Known limits: a lookup takes roughly 10 to 25 seconds because a full agent turn runs for each one. Archived helpers stay in your agent history and in the provider's session list, and Paseo's plugin API has no way to delete them. Helpers are told not to use tools, and that is enforced by instruction only. Selections over 5000 characters are ignored. The English check is chat feedback, not a full proofreader: a message added while the agent is still working is not checked, and the results live in the daemon's memory, so they are gone after a daemon restart or when the chat's session is reloaded.
 
 Translate is free and open source. To support its development, donate via PayPal: https://paypal.me/duocnguyen
 

@@ -47,7 +47,8 @@ tail@after [… "user_message:DELAY Write three short sentences…","assistant_m
 
 So the plugin must append the checking row before calling the model; the append itself takes 3 to
 20 ms. The row survives refetch: the next turn's fetch still returns it in place. The docs state rows
-live in the daemon's memory and do not survive a daemon restart. In the runaway run below, helpers
+live in the daemon's memory and do not survive a daemon restart; the multi-host test below found
+they do not survive `paseo agent reload` either. In the runaway run below, helpers
 that auto-archived got a new timeline epoch and a re-append after that landed at the end, so a row
 re-appended after an epoch reset moves. The plugin only re-appends within the seconds of one check,
 so this window is small. App reload was not tested in the UI; the app reads the same projected
@@ -85,7 +86,7 @@ no message from the helper (`paseo logs 6e25dff0`). Confidence: HIGH.
 
 ## S4. Two hosts in one app
 
-Not tested with two live hosts. From the 0.13.0 app bundle
+Tested live on 2026-10-25, see "Two live hosts" at the end. From the 0.13.0 app bundle
 (`Paseo.app/…/app-dist/_expo/static/js/web/index-f1a1407f….js`), a plugin row's renderer is
 `useInstalledPlugin(serverId, item.pluginId).timelineRenderers.find(kind, version)`: the renderer
 comes from the plugin installed on the host that owns the agent, so each row renders once, with that
@@ -155,3 +156,18 @@ reference does not promise this: it describes `context.paseo` for the hook invoc
 `context.signal` aborts on invocation timeout or plugin stop. The server context exposes no
 long-lived `paseo` (`["handle","registerProvider","registerUsageSource","registerSettings","on","before"]`).
 The check stays inside the hook.
+
+## Two live hosts (2026-10-25)
+
+Two test daemons on one machine, A (`127.0.0.1:6801`, serving the web client) and B
+(`127.0.0.1:6802`), both with the plugin installed as `translate`, and one web client connected to both.
+
+- Both on this build, the same bad-English message sent to a chat on each: each daemon logged one
+  `[english-feedback]` line, for its own agent only; each timeline holds one plugin row; each daemon
+  created one helper. HIGH.
+- B on the old build `232ca39`, which has no hook: a fresh chat on B got no log line, no row and no
+  helper, while A kept checking its own chat. A row written on B by the new build stays in B's
+  timeline after the downgrade. HIGH.
+- `paseo agent reload` on A's agent: the timeline comes back with the user message and no plugin row,
+  and the message is not checked again (one log line, one helper). The next message is checked once.
+  A daemon restart gives the same result. HIGH.
