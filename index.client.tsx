@@ -1,10 +1,12 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
+import { FeedbackRow } from "./client/FeedbackRow";
 import { TranslatePanel, panelTestId } from "./client/TranslatePanel";
 import { TranslateSettingsScreen } from "./client/TranslateSettingsScreen";
 import { createOwnership } from "./client/ownership";
 import { startSelectionListener } from "./client/web";
 import type { Candidate } from "./shared/translate";
 import { startLookup } from "./client/translator";
+import { feedbackRowKind, feedbackRowSchema, feedbackRowVersion } from "./shared/feedback";
 import { buildLookupPrompt } from "./shared/rpc";
 
 export default function contribute(client: PluginClientContext) {
@@ -17,6 +19,8 @@ export default function contribute(client: PluginClientContext) {
     onSelect({ openPanel }) { openPanel("translate", { location: "explorer" }); },
   });
   client.addSettingsScreen({ id: "settings", title: "Translate", icon: "Languages", Component: TranslateSettingsScreen });
+  // Draws the English feedback rows the daemon writes under the user's messages (server/feedback.ts).
+  client.addTimelineRenderer({ kind: feedbackRowKind, version: feedbackRowVersion, schema: feedbackRowSchema, Component: FeedbackRow });
   const deps = { paseo: client.paseo, requestPrompt: (candidate: Candidate) => client.rpc(buildLookupPrompt, candidate) };
   // Paseo runs this plugin once per connected host, all in the same page. The workspace the user is
   // looking at belongs to one of them, and only that host's instance may offer the button.

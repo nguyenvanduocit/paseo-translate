@@ -1,5 +1,5 @@
 import { openExternalUrl, useSettings, type PluginSurfaceProps, type SettingsState } from "@getpaseo/plugin/client";
-import { SettingsAction, SettingsCard, SettingsSection } from "@getpaseo/plugin/client/ui";
+import { SettingsAction, SettingsCard, SettingsSection, SettingsSwitch } from "@getpaseo/plugin/client/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { translateSettings, type TranslateSettings } from "../shared/settings";
@@ -14,7 +14,7 @@ type Theme = PluginSurfaceProps["theme"];
 const toDraft = (values: TranslateSettings): TranslateSettings => ({ ...values, promptTemplate: values.promptTemplate || defaultPromptTemplate });
 const toStored = (values: TranslateSettings): TranslateSettings => ({ ...values, promptTemplate: values.promptTemplate.trim() === defaultPromptTemplate ? "" : values.promptTemplate });
 const same = (a: TranslateSettings, b: TranslateSettings) =>
-  a.promptTemplate === b.promptTemplate && a.extraInstructions === b.extraInstructions;
+  a.promptTemplate === b.promptTemplate && a.extraInstructions === b.extraInstructions && a.feedbackEnabled === b.feedbackEnabled;
 
 function Editor({ settings, theme }: { settings: Ready; theme: Theme }) {
   // The draft keeps the revision it started from, so another client's save shows up as a conflict.
@@ -55,6 +55,18 @@ function Editor({ settings, theme }: { settings: Ready; theme: Theme }) {
 
   return (
     <>
+      <SettingsSection title="English feedback">
+        <SettingsCard>
+          <SettingsSwitch
+            label="Check my English"
+            hint="When you send a message in a Claude chat, Claude Haiku on this host checks its English and shows any fixes under the message. Applies to chats on this host only."
+            value={draft.values.feedbackEnabled}
+            disabled={settings.saving}
+            onValueChange={feedbackEnabled => change({ feedbackEnabled })}
+          />
+        </SettingsCard>
+      </SettingsSection>
+
       <SettingsSection title="Prompt">
         <SettingsCard>
           <View style={styles.block}>
