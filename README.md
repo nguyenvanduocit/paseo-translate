@@ -10,6 +10,10 @@ word, a phrase or a paragraph in a chat, click **Translate**, and the Explorer p
 
 ![A sentence result: translation, words and phrases, grammar, patterns](assets/screenshot-sentence.png)
 
+It also checks the English you write. After you send a message in a Claude chat, Claude Haiku reads
+it and, if something is off, a line under the message shows your text with each fix marked and a
+**Why?** list that explains each one.
+
 `OVERVIEW.md` is the page Paseo shows when you browse plugins. This file covers installing, using and
 developing it.
 
@@ -39,6 +43,21 @@ from the app instead. Update with `paseo plugin update translate`.
 
 The result lives in memory and is gone after an app reload. A failed lookup shows its error and a Retry button.
 
+### English feedback
+
+Send a message in a Claude chat as usual. A muted "Checking your English…" line appears under it for
+a few seconds. Then:
+
+- the message is fine: the line disappears;
+- something is off: the line shows your message with removed words struck through in red and added
+  words in green; **Why? · N fixes** opens one explanation per fix, tagged `mistake`, `unnatural` or `tip`;
+- the check could not run: the line disappears and the reason goes to `paseo plugin logs translate`.
+
+Checked: top-level Claude chats only. Skipped: subagents and helper agents, chats on other providers,
+slash commands, messages under three words, messages that are mostly code, logs or links, and
+messages that are mostly not English (Vietnamese, Japanese, and so on). Only the first 1000
+characters of a long message are checked, cut at a sentence end.
+
 ## Settings
 
 Open **Settings → Plugins → Translate**, or the gear in the panel. The values are stored on the
@@ -48,6 +67,7 @@ daemon, so every client of that daemon shares them.
 | --- | --- |
 | Translation prompt | The instruction sent to the helper agent. It names the target language. `{{text}}` is the selection and `{{sentence}}` is the text around it. Empty or unchanged means the built-in prompt. |
 | Extra instructions | Appended to the end of every prompt, for example "medical context". |
+| Check my English | Turns English feedback on or off for the chats of this daemon. On by default. With several hosts, set it on each one. |
 
 The JSON reply format is appended after your prompt on every lookup, so a custom prompt cannot break
 the result. To translate into another language, edit the language in the prompt.
@@ -59,6 +79,15 @@ provider and model of the workspace's most recent chat, receives the selection a
 characters around it, and replies with JSON that the panel renders. Paseo archives the helper after
 its first answer. See [docs/design.md](docs/design.md) for the decisions behind this.
 
+English feedback runs in the daemon, not the app, so it fires once per message on the host that owns
+the chat however many hosts the app is connected to. On `agent.turn_started` the plugin reads the
+user's message from the timeline, writes a `checking` row (kind `english-feedback`, version 1) right
+under it, and asks a helper subagent on `claude/claude-haiku-5-5` for JSON: `{ ok, corrected, issues }`.
+It then replaces the row, keyed by the message id, with `fine`, `corrected` or `unchecked`. The app
+diffs the original against the corrected text word by word; the model never writes the markup. The
+helper has 25 seconds, inside Paseo's 30 second hook limit, and is archived when it finishes or
+times out. The spike behind this design is in [docs/feedback-spike.md](docs/feedback-spike.md).
+
 ## Known limits
 
 - A lookup takes roughly 10 to 25 seconds, because each one is a full agent turn. The result starts to appear after about 5.
@@ -66,6 +95,12 @@ its first answer. See [docs/design.md](docs/design.md) for the decisions behind 
   no delete call. `paseo ls -a -g --label paseo-translate=1` lists them and `paseo delete <id>` removes one.
 - Helpers are told not to use tools. That is an instruction, not an enforced restriction.
 - Selections over 5000 characters are ignored.
+- English feedback sends the message text to Claude Haiku on the host that owns the chat.
+- A message steered into a turn that is still running starts no new turn, so it is not checked.
+- Feedback rows live in the daemon's memory and are gone after a daemon restart. If the plugin is
+  removed, earlier rows show Paseo's "Plugin timeline item unavailable" placeholder.
+- In a repository with heavy Claude Code hooks or context, the helper session can take longer to start
+  than the 25 second budget; that message then gets no feedback.
 - The workspace id comes from the app's route (`/workspace/<id>`). A route change in Paseo breaks the
   button until `workspaceIdFromLocation` in `client/web.ts` is updated.
 
@@ -83,13 +118,16 @@ paseo plugin logs translate
 ```
 
 `npm test` runs the pure logic in `shared/` (selection rules, prompt building, reply parsing, inline
-markup) with Node's test runner. The UI is checked by hand; the checklist is in
+markup, which messages get English feedback, the feedback prompt and reply parser, and the word diff)
+with Node's test runner. The UI is checked by hand; the checklist is in
 [docs/design.md](docs/design.md#testing).
 
 | Path | Runs in | Contents |
 | --- | --- | --- |
 | `index.client.tsx` | App | Registers the panel, settings screen, Command Center item and selection listener. |
-| `index.server.ts` | Daemon | Registers the settings document and the `translate.prompt` RPC. |
+| `index.server.ts` | Daemon | Registers the settings document, the `translate.prompt` RPC and the English feedback hook. |
+| `server/feedback.ts` | Daemon | Reads the new message, runs the Haiku helper and writes the feedback row. |
+| `client/FeedbackRow.tsx` | App | Renders the feedback row under a message. |
 | `client/web.ts` | App (web only) | Selection listener and floating button. The only file that touches browser APIs. |
 | `client/translator.ts` | App | Creates the helper agent and settles a lookup. |
 | `client/TranslatePanel.tsx`, `client/ResultView.tsx`, `client/EmptyState.tsx` | App | The panel with its donate, Discord and settings buttons, the result renderer, and the empty-state illustration. |
@@ -98,6 +136,7 @@ markup) with Node's test runner. The UI is checked by hand; the checklist is in
 | `client/lookups.ts` | App | In-memory store of the latest lookup per workspace. |
 | `shared/translate.ts` | Both | Selection rules, prompt, reply schema and parser. |
 | `shared/settings.ts`, `shared/rpc.ts`, `shared/rich-text.ts` | Both | Settings document, RPC contract, `**bold**` and `` `code` `` parser. |
+| `shared/feedback-rules.ts`, `shared/feedback.ts`, `shared/word-diff.ts` | Both | Which messages are checked, the feedback prompt, reply and row schemas, and the word diff. |
 
 Run this audit before a change that touches `client/`. A hit outside `client/web.ts` is a bug; the
 three hits that are TypeScript generics such as `ReturnType<typeof …>` are not HTML.

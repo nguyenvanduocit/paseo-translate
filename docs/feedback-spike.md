@@ -107,3 +107,14 @@ Both become a quiet row and one log line. Confidence: HIGH.
 ## Outcome
 
 S1 and S2 allow design C: append the checking row at `turn_started`, run Haiku, re-append the same id.
+
+## After the build: latency with the real prompt
+
+With the real prompt, the end-to-end test on the same daemon measured 13.3 s for a message with
+three fixes and 6.2 s for a message without fixes, both in an empty directory. During the test window
+the hook also checked one message in an existing chat whose workspace is a large repository with
+many Claude Code hooks. That helper's timeline stayed empty for the full 20 s it had, so it never
+reached its prompt, and the row ended `unchecked`. One sample, so the cause (session start-up in
+that repository) is MEDIUM. The budget is now 25 s. Running the helper in a neutral directory would
+avoid the project's start-up cost. Without adding a visible workspace per check, that needs
+`background` workspaces, which are not in the 0.11.2 SDK.
