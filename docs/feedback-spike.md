@@ -171,3 +171,27 @@ Two test daemons on one machine, A (`127.0.0.1:6801`, serving the web client) an
 - `paseo agent reload` on A's agent: the timeline comes back with the user message and no plugin row,
   and the message is not checked again (one log line, one helper). The next message is checked once.
   A daemon restart gives the same result. HIGH.
+
+## Messages sent while a turn runs (2026-10-25)
+
+A message steered into a busy turn joins it: its timeline entry carries the running turn's id and no
+`agent.turn_started` fires for it. Measured on a temp 0.13.0 daemon with a turn running a 40 s
+command: the only `turn_started` was the first turn's, and the steered message (#7,
+`turn=foreground-turn-1`) got no row. A message sent after a turn has ended starts its own turn and is
+checked as before.
+
+There is no lifecycle event for a user message in the plugin reference or in the 0.13.0 plugin
+package. The agent's live timeline (`paseo.agents.ref(id).timeline.subscribe`, 0.11.2
+`@getpaseo/client/dist/index.d.ts:250`) delivers the steered `user_message` about 0.3 s after it
+arrives. A row appended then lands directly under the message (seq #8 after #7), and writing the same
+id again keeps it there. A row first written at `agent.turn_ended` lands after the turn's last reply
+(#45 in the same test).
+
+The plugin opens that subscription with the `context.paseo` of the turn's `agent.turn_started` hook
+and uses it after the hook has returned. That works on 0.13.0 (and stayed usable 40 s past the hook's
+30 s limit in an earlier test), but the plugin docs describe `context.paseo` only for the hook call.
+If a later Paseo closes it when the hook returns, live checks stop; the end of the turn still checks
+every message, and those rows sit at the end of the turn with a quote of their message.
+
+`agent.turn_ended.timeline` is deprecated and always empty, so the end-of-turn check reads the turn
+back with `timeline.refetch`.

@@ -6,6 +6,10 @@
   the chat. A message with mistakes gets a line under it with each fix marked and a "Why?" list of short
   explanations; a message that is fine shows nothing.
 - Setting "Check my English", on by default, per host.
+- Messages sent while the agent is still working get feedback too, under the message; a message missed
+  then is checked when the turn ends, with a late row that quotes it. Each message is checked once and
+  at most two checks run per chat at a time.
+- Two-word messages are checked; images sent without text are skipped.
 - The check's helper starts without the project's MCP servers, so it finishes in about 4 to 15 seconds in a
   repository with a `.mcp.json` as well as in a bare directory.
 

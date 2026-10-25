@@ -53,10 +53,14 @@ a few seconds. Then:
   words in green; **Why? · N fixes** opens one explanation per fix, tagged `mistake`, `unnatural` or `tip`;
 - the check could not run: the line disappears and the reason goes to `paseo plugin logs translate`.
 
-Checked: top-level Claude chats only. Skipped: subagents and helper agents, chats on other providers,
-slash commands, messages under three words, messages that are mostly code, logs or links, and
-messages that are mostly not English (Vietnamese, Japanese, and so on). Only the first 1000
-characters of a long message are checked, cut at a sentence end.
+Checked: every message you write in a top-level Claude chat, including messages sent while the
+agent is still working. Skipped: subagents and helper agents, chats on other providers, slash
+commands, one-word messages, images sent without text (`skipped (no text)` in the log), messages
+that are mostly code, logs or links, and messages that are mostly not English (Vietnamese, Japanese,
+and so on). Only the first 1000 characters of a long message are checked, cut at a sentence end.
+
+A message that could not be checked when it arrived is checked when the agent's turn ends. Its row
+then sits at the end of the turn and starts with **About "…"**, a quote of the message it is about.
 
 ## Settings
 
@@ -86,9 +90,25 @@ under it, and asks a helper subagent on `claude/claude-haiku-5-5` for JSON: `{ o
 It then replaces the row, keyed by the message id, with `fine`, `corrected` or `unchecked`. The app
 diffs the original against the corrected text word by word; the model never writes the markup. The
 helper starts with `--strict-mcp-config` (the Claude provider option `extraArgs`), so it skips the
-project's MCP servers, which can hold a session for 30 seconds before its first turn. It has 25
-seconds, inside Paseo's 30 second hook limit, and is archived when it finishes or
-times out. The spike behind this design is in [docs/feedback-spike.md](docs/feedback-spike.md).
+project's MCP servers, which can hold a session for 30 seconds before its first turn. It is archived
+when it finishes, times out or is aborted.
+
+A message sent while the agent is working joins the running turn, so it fires no `turn_started`.
+While a turn runs, the plugin therefore keeps a subscription to the agent's timeline
+(`paseo.agents.ref(id).timeline.subscribe`) and checks each new user message as it arrives; its row
+lands directly under it. When the turn ends, the plugin reads the turn back and checks any message
+still without a result: a row stuck on `checking` is finished in place, and a message with no row
+gets a late row (`late: true` and a `quote`) at the end of the turn. All three triggers share one
+ledger per agent keyed by the row id, so a message is checked once, and at most two helpers run per
+agent at a time. A check started by a hook has 25 seconds, inside Paseo's 30 second hook limit; a
+live check runs after its hook returned and has 60 seconds. A `checking` row older than 90 seconds
+renders nothing, so a check that died with the plugin leaves nothing behind.
+
+The live subscription is opened with the `context.paseo` of the turn's `agent.turn_started` hook and
+used after that hook has returned. Paseo 0.13.0 keeps that connection working, but its plugin
+docs do not promise it. If a later Paseo closes it when the hook returns, the live checks stop and
+the end of the turn still checks every message, with late rows. The spike behind this design is in
+[docs/feedback-spike.md](docs/feedback-spike.md).
 
 ## Known limits
 
@@ -98,7 +118,9 @@ times out. The spike behind this design is in [docs/feedback-spike.md](docs/feed
 - Helpers are told not to use tools. That is an instruction, not an enforced restriction.
 - Selections over 5000 characters are ignored.
 - English feedback sends the message text to Claude Haiku on the host that owns the chat.
-- A message steered into a turn that is still running starts no new turn, so it is not checked.
+- Messages sent mid-turn are caught live only while Paseo keeps a hook's connection usable after
+  the hook returns (true on 0.13.0, not documented); otherwise their feedback arrives late, at the
+  end of the turn.
 - Feedback rows live in the daemon's memory and are gone after a daemon restart or an agent reload
   (`paseo agent reload`); the message is not checked again. If the plugin is removed, or the host
   goes back to a version without English feedback, earlier rows show Paseo's "Plugin timeline item
