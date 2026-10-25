@@ -12,17 +12,33 @@ type Corrected = Extract<FeedbackRowData, { state: "corrected" }>;
 const PULSE_MS = 700;
 
 // Host layout this row is placed against, measured in the Paseo 0.13.0 web client at desktop width and at 390 px
-// (dark and light): the user's timeline item ends with its message action row (timestamp, rewind, copy), and the
-// host then leaves 16 px before the next timeline item, this row. After a Paseo update, re-measure the distance from
-// the bubble's bottom to this row's top and the action row's size, and update these numbers.
+// (dark and light): under the bubble the user's timeline item has its message action row (timestamp, rewind, copy:
+// 8 px margin, 24 px tall, 107 to 109 px wide, right-aligned with the bubble; hidden until hover on desktop, always
+// shown on a phone), then the host leaves 16 px before the next timeline item, this row. The row moves up over that
+// space to sit just under the bubble. Its first line shares the action row's band, so it keeps clear of the action
+// row's width; lines below the band use the full width. After a Paseo update, re-measure the bubble's bottom, the
+// action row's box and this row's top, and update these numbers.
 const hostItemSpacing = 16;
+const hostActionRowBand = 8 + 24;
+// 109 px measured for "9:59 PM", plus room for a two-digit hour and an 8 px gap.
+const actionRowClearance = 128;
+const gapUnderBubble = 10;
 
 function createStyles({ colors }: Theme, compact: boolean) {
   const size = compact ? fontSize.sm : fontSize.base - 1;
   return StyleSheet.create({
-    // Right-aligned like the user's bubble above it, so it reads as part of the message, not of the reply. It takes
-    // back the host's item spacing, so it starts right under the message's action row without overlapping it.
-    row: { alignSelf: "flex-end", maxWidth: "100%", marginTop: -hostItemSpacing, marginHorizontal: compact ? 2 : 4, gap: 4 },
+    // Right-aligned like the user's bubble above it, so it reads as part of the message, not of the reply. The row's
+    // own box reaches into the action row's band, so only its children take touches and the buttons stay clickable.
+    row: {
+      alignSelf: "flex-end",
+      maxWidth: "100%",
+      marginTop: gapUnderBubble - hostItemSpacing - hostActionRowBand,
+      marginHorizontal: compact ? 2 : 4,
+      gap: 4,
+      pointerEvents: "box-none",
+    },
+    // The first line sits beside the action row, never under it.
+    firstLine: { marginRight: actionRowClearance },
     muted: { color: colors.foregroundMuted, fontSize: size, lineHeight: size + 7 },
     diff: { color: colors.foreground, fontSize: size, lineHeight: size + 7 },
     pen: { color: colors.accent },
@@ -61,7 +77,7 @@ function Checking({ theme, compact }: { theme: Theme; compact: boolean }) {
   }, [opacity]);
   return (
     <Animated.View style={[styles.row, { opacity }]} accessibilityRole="progressbar" accessibilityLabel="Checking your English">
-      <Text style={styles.muted}>
+      <Text style={[styles.muted, styles.firstLine]}>
         <Text style={styles.pen}>✎ </Text>Checking your English…
       </Text>
     </Animated.View>
@@ -76,7 +92,7 @@ function Correction({ data, theme, compact }: { data: Corrected; theme: Theme; c
   const count = data.issues.length;
   return (
     <View style={styles.row}>
-      <Text style={styles.diff} selectable>
+      <Text style={[styles.diff, styles.firstLine]} selectable>
         <Text style={styles.pen}>✎ </Text>
         {segments.map((segment, index) => (
           <Fragment key={index}>
