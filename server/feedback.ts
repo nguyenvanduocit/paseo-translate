@@ -174,6 +174,9 @@ export function createFeedbackChecks(isEnabled: () => Promise<boolean>) {
       await write(row);
       log(agent.id, late ? `${row.state} (late)` : row.state, startedAt);
     } catch (error) {
+      // Cut off by a plugin reload or stop: the row stays `checking`, so the next process finishes it in place when
+      // the turn ends, and the renderer hides it if that never happens.
+      if (lifetime.signal.aborted) return log(agent.id, "stopped with the plugin", startedAt);
       await write({ state: "unchecked" }).catch(() => undefined);
       log(agent.id, `unchecked: ${error instanceof Error ? error.message : String(error)}`, startedAt);
     }
