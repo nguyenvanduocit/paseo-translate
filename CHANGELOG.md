@@ -6,6 +6,8 @@
   the chat. A message with mistakes gets a line under it with each fix marked and a "Why?" list of short
   explanations; a message that is fine shows nothing.
 - Setting "Check my English", on by default, per host.
+- The check's helper starts without the project's MCP servers, so it finishes in about 4 to 15 seconds in a
+  repository with a `.mcp.json` as well as in a bare directory.
 
 ## 0.1.0
 

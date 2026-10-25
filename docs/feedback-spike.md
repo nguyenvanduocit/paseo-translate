@@ -110,11 +110,48 @@ S1 and S2 allow design C: append the checking row at `turn_started`, run Haiku, 
 
 ## After the build: latency with the real prompt
 
-With the real prompt, the end-to-end test on the same daemon measured 13.3 s for a message with
-three fixes and 6.2 s for a message without fixes, both in an empty directory. During the test window
-the hook also checked one message in an existing chat whose workspace is a large repository with
-many Claude Code hooks. That helper's timeline stayed empty for the full 20 s it had, so it never
-reached its prompt, and the row ended `unchecked`. One sample, so the cause (session start-up in
-that repository) is MEDIUM. The budget is now 25 s. Running the helper in a neutral directory would
-avoid the project's start-up cost. Without adding a visible workspace per check, that needs
-`background` workspaces, which are not in the 0.11.2 SDK.
+With the real prompt, the first end-to-end test measured 13.3 s for a message with three fixes and
+6.2 s for a message without fixes, both in an empty directory. A check in a chat in the
+`paseo-on-compass` repository timed out: its helper timeline stayed empty for the 20 s it had.
+
+## Helper start-up in a repository (measured 2026-10-25)
+
+The same helper (`claude/claude-haiku-5-5`, prompt "Reply with only the word: ok", `autoArchive`),
+created and awaited until idle, 3 at a time:
+
+| Directory | Provider options | Create to idle (s) |
+| --- | --- | --- |
+| empty `/tmp` directory | none | 6.7, 6.4, 5.0 |
+| `paseo-on-compass` repository | none | 35.9, 37.3, 35.1, 34.8, 34.7 |
+| `paseo-on-compass` repository | `extraArgs: { "strict-mcp-config": null }` | 4.4, 4.3, 6.4, 8.7, 6.0, 6.4 |
+| empty `/tmp` directory | `extraArgs: { "strict-mcp-config": null }` | 4.8, 3.8, 5.6 |
+
+Two runs in the third row replied "Not logged in · Please run /login"; the re-run had none, so that
+was a transient account error, not the flag. The extra 30 s comes from the project's MCP
+configuration (`compass/supremor/.mcp.json` declares 5 servers; one times out after 30 s). HIGH.
+
+`--strict-mcp-config` is a documented Claude Code CLI flag ("Only use MCP servers from --mcp-config,
+ignoring all other MCP configurations", `claude --help`, 2.1.309). Paseo validates `extraArgs` in its
+strict Claude provider schema (`providers/claude/options.js`, present in 0.10.1, 0.11.0-beta.5, 0.11.2
+and 0.13.0) and spreads the provider options into the Claude SDK options in each of those versions.
+The 0.11.2 SDK passes them as `config.options`. The helper's project hooks and `CLAUDE.md` still load.
+
+End to end with the flag, on a separate test daemon with the plugin installed, checks in a chat in
+`paseo-on-compass` took 7.6, 6.3, 8.5 and 14.9 s.
+
+## Does `context.paseo` outlive the hook?
+
+A spike scheduled calls 5 s and 40 s after its `agent.turn_started` handler had returned:
+
+```
+14:07:14.306 hook start 7c244c7d context keys ["paseo","signal"]
+14:07:14.306 hook returns
+14:07:19.315 +5s refresh ok true aborted false · append ok {"seq":2} · helper idle "ok"
+14:07:54.307 +40s refresh ok true aborted false · append ok {"seq":4} · helper idle "ok"
+```
+
+It does on 0.13.0, past the 30 s hook budget, and `context.signal` stays unaborted. The plugin
+reference does not promise this: it describes `context.paseo` for the hook invocation, and
+`context.signal` aborts on invocation timeout or plugin stop. The server context exposes no
+long-lived `paseo` (`["handle","registerProvider","registerUsageSource","registerSettings","on","before"]`).
+The check stays inside the hook.

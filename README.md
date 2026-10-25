@@ -85,7 +85,9 @@ user's message from the timeline, writes a `checking` row (kind `english-feedbac
 under it, and asks a helper subagent on `claude/claude-haiku-5-5` for JSON: `{ ok, corrected, issues }`.
 It then replaces the row, keyed by the message id, with `fine`, `corrected` or `unchecked`. The app
 diffs the original against the corrected text word by word; the model never writes the markup. The
-helper has 25 seconds, inside Paseo's 30 second hook limit, and is archived when it finishes or
+helper starts with `--strict-mcp-config` (the Claude provider option `extraArgs`), so it skips the
+project's MCP servers, which can hold a session for 30 seconds before its first turn. It has 25
+seconds, inside Paseo's 30 second hook limit, and is archived when it finishes or
 times out. The spike behind this design is in [docs/feedback-spike.md](docs/feedback-spike.md).
 
 ## Known limits
@@ -99,8 +101,9 @@ times out. The spike behind this design is in [docs/feedback-spike.md](docs/feed
 - A message steered into a turn that is still running starts no new turn, so it is not checked.
 - Feedback rows live in the daemon's memory and are gone after a daemon restart. If the plugin is
   removed, earlier rows show Paseo's "Plugin timeline item unavailable" placeholder.
-- In a repository with heavy Claude Code hooks or context, the helper session can take longer to start
-  than the 25 second budget; that message then gets no feedback.
+- The helper runs in the chat's directory, so it loads that project's Claude Code hooks and
+  `CLAUDE.md`, but not its MCP servers (`--strict-mcp-config`). A project whose hooks take most of the
+  25 second budget leaves too little time for the check; that message then gets no feedback.
 - The workspace id comes from the app's route (`/workspace/<id>`). A route change in Paseo breaks the
   button until `workspaceIdFromLocation` in `client/web.ts` is updated.
 
