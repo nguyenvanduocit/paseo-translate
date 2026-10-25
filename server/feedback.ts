@@ -15,8 +15,12 @@ import {
 import { excerpt, feedbackHelperLabel, isClaudeSession, isOwnHelper, isTopLevel, skipReason } from "../shared/feedback-rules";
 
 // Under the 30 s limit Paseo gives a hook, leaving time to write the row before the hook is cut off. A check takes
-// 6 to 13 s in a bare directory; in a repository the helper session also loads the project's hooks and context first.
+// 6 to 13 s, in a bare directory or a repository alike, once the helper skips the project's MCP servers (below).
 const checkTimeoutMs = 25_000;
+// The helper starts in the user's repository, and Claude Code connects the project's MCP servers (`.mcp.json`) before
+// the first turn; one unreachable server held it for 30 s. `--strict-mcp-config` keeps only the servers Paseo passes,
+// which the helper does not use either. `extraArgs` is part of the Claude provider options Paseo validates.
+const helperProviderOptions = { extraArgs: { "strict-mcp-config": null } };
 const tailLimit = 8;
 
 type TurnStarted = PluginLifecycleEvents["agent.turn_started"];
@@ -42,7 +46,7 @@ async function turnMessage(agent: PaseoAgentHandle, turnId: string | null) {
 /** Claude Haiku's final reply about `text`, from a helper agent under the user's agent on this host. */
 async function askHaiku(context: PluginHookContext, workspaceId: string, parentId: string, text: string): Promise<string | null> {
   const helper = await context.paseo.workspaces.ref(workspaceId).agents.create({
-    config: { provider: feedbackProvider, systemPrompt: feedbackSystemPrompt },
+    config: { provider: feedbackProvider, systemPrompt: feedbackSystemPrompt, options: helperProviderOptions },
     parent: parentId,
     title: "English check",
     labels: { [feedbackHelperLabel]: "1" },
