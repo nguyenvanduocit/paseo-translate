@@ -8,6 +8,8 @@ export const translateSettingsSchema = z.object({
   // Empty means the built-in template.
   promptTemplate: z.string().max(maxPromptTemplateLength).default(""),
   extraInstructions: z.string().max(maxExtraInstructionsLength).default(""),
+  // A document saved before this switch existed parses with the default, so no migration is needed.
+  feedbackEnabled: z.boolean().default(true),
 });
 export type TranslateSettings = z.infer<typeof translateSettingsSchema>;
 
