@@ -35,7 +35,7 @@ export const feedbackRowSchema = z.discriminatedUnion("state", [
   z.object({ state: z.literal("unchecked") }),
   z.object({ state: z.literal("corrected"), original: z.string(), corrected: z.string(), truncated: z.boolean(), issues: z.array(issueSchema) }),
 ]);
-export type FeedbackRow = z.infer<typeof feedbackRowSchema>;
+export type FeedbackRowData = z.infer<typeof feedbackRowSchema>;
 
 export const feedbackSystemPrompt =
   "You are an English teacher. Reply with one JSON object and nothing else. Never use tools, never read files, never ask questions.";
@@ -86,7 +86,7 @@ export const maxShownIssues = 10;
 const sameText = (a: string, b: string) => a.replace(/\s+/g, " ").trim() === b.replace(/\s+/g, " ").trim();
 
 /** The row for a parsed reply: quiet when there is nothing to show, else both texts and the reasons. */
-export function rowFromReply(original: string, truncated: boolean, reply: FeedbackReply): FeedbackRow {
+export function rowFromReply(original: string, truncated: boolean, reply: FeedbackReply): FeedbackRowData {
   if (reply.issues.length === 0 && (reply.ok || sameText(original, reply.corrected))) return { state: "fine" };
   return { state: "corrected", original, corrected: reply.corrected, truncated, issues: reply.issues.slice(0, maxShownIssues) };
 }
