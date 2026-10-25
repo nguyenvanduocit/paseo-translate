@@ -78,10 +78,16 @@ test('slash commands are skipped', () => {
   assert.equal(rules.skipReason('  /review'), 'command');
 });
 
-test('messages under three words are skipped', () => {
-  for (const text of ['ok', 'yes please', 'continue', '  ', 'go!'])
+test('one-word messages are skipped, two words are checked', () => {
+  for (const text of ['ok', 'continue', 'go!', 'go'])
     assert.equal(rules.skipReason(text), 'short', text);
-  assert.equal(rules.skipReason('yes please continue'), null);
+  for (const text of ['look good', 'yes please', 'let implement'])
+    assert.equal(rules.skipReason(text), null, text);
+});
+
+test('a message without text, such as an image on its own, is skipped as having no text', () => {
+  for (const text of ['', '   ', '\n\t'])
+    assert.equal(rules.skipReason(text), 'no text', JSON.stringify(text));
 });
 
 test('messages that are mostly code, logs or links are skipped', () => {

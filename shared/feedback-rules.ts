@@ -9,7 +9,7 @@ const ownLabels = ["paseo-translate", feedbackHelperLabel];
  * a full request, while a pasted document does not turn one check into a long and costly turn.
  */
 export const maxCheckedLength = 1000;
-const minWords = 3;
+const minWords = 2;
 // Share of the message that may be code, logs and links before it is no longer a sentence to check.
 const maxCodeShare = 0.5;
 // Share of letters outside A to Z above which the message is taken as not English (Vietnamese, Japanese, ...).
@@ -29,7 +29,7 @@ export const isClaudeSession = (agent: SessionAgent) => agent.provider === "clau
 /** A helper agent of this plugin, so the plugin never checks its own prompts. */
 export const isOwnHelper = (labels: Record<string, string> | null | undefined) => ownLabels.some(label => labels?.[label] !== undefined);
 
-export type SkipReason = "command" | "short" | "code" | "not-english";
+export type SkipReason = "no text" | "command" | "short" | "code" | "not-english";
 
 const codePatterns = [
   /```[\s\S]*?(?:```|$)/g, // fenced block, also one left open
@@ -49,6 +49,8 @@ const words = (text: string) => text.match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+
 /** Why a message gets no feedback, or null when it should be checked. */
 export function skipReason(text: string): SkipReason | null {
   const trimmed = text.trim();
+  // An image sent on its own arrives as a message with empty text.
+  if (!trimmed) return "no text";
   if (trimmed.startsWith("/")) return "command";
   const rest = prose(trimmed);
   const restLength = rest.replace(/\s+/g, "").length;
