@@ -14,8 +14,9 @@ import {
 } from "../shared/feedback";
 import { excerpt, feedbackHelperLabel, isClaudeSession, isOwnHelper, isTopLevel, skipReason } from "../shared/feedback-rules";
 
-// Under the 30 s limit Paseo gives a hook, so the row is settled before the hook is cut off. Haiku takes about 6 s.
-const checkTimeoutMs = 20_000;
+// Under the 30 s limit Paseo gives a hook, leaving time to write the row before the hook is cut off. A check takes
+// 6 to 13 s in a bare directory; in a repository the helper session also loads the project's hooks and context first.
+const checkTimeoutMs = 25_000;
 const tailLimit = 8;
 
 type TurnStarted = PluginLifecycleEvents["agent.turn_started"];
