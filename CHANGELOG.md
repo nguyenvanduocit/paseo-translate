@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - English feedback: after you send a message in a Claude chat, Claude Haiku checks its English on the host that owns
   the chat. A message with mistakes gets a line under it with each fix marked; clicking the line opens a list of
