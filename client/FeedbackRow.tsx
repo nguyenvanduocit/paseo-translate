@@ -1,13 +1,14 @@
 import type { PluginTimelineItemProps } from "@getpaseo/plugin/client";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import type { FeedbackIssue, FeedbackRowData } from "../shared/feedback";
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, type TextStyle } from "react-native";
+import { checkingStaleMs, isStaleChecking, type FeedbackIssue, type FeedbackRowData } from "../shared/feedback";
 import { wordDiff } from "../shared/word-diff";
 import { fontSize } from "./typography";
 
 type Props = PluginTimelineItemProps<FeedbackRowData>;
 type Theme = Props["theme"];
 type Corrected = Extract<FeedbackRowData, { state: "corrected" }>;
+type Checking = Extract<FeedbackRowData, { state: "checking" }>;
 
 const PULSE_MS = 700;
 
@@ -39,6 +40,9 @@ function createStyles({ colors }: Theme, compact: boolean) {
     },
     // The first line sits beside the action row, never under it.
     firstLine: { marginRight: actionRowClearance },
+    // A late row is written when the turn ends, so it sits at the end of the turn, away from its message and its
+    // action row: an ordinary item with the host's spacing, saying which message it is about.
+    lateRow: { alignSelf: "flex-end", maxWidth: "100%", marginHorizontal: compact ? 2 : 4, gap: 4 },
     muted: { color: colors.foregroundMuted, fontSize: size, lineHeight: size + 7 },
     diff: { color: colors.foreground, fontSize: size, lineHeight: size + 7 },
     pen: { color: colors.accent },
@@ -60,9 +64,26 @@ const useStyles = (theme: Theme, compact: boolean) => useMemo(() => createStyles
 const tagColor = (tag: FeedbackIssue["tag"], theme: Theme) =>
   tag === "mistake" ? theme.colors.statusDanger : tag === "unnatural" ? theme.colors.statusWarning : theme.colors.border;
 
-/** The muted line shown while Haiku works, pulsing so it reads as pending. */
-function Checking({ theme, compact }: { theme: Theme; compact: boolean }) {
+/** Whether a `checking` row written at `writtenAt` has gone stale; turns true by itself once it is old enough. */
+function useStale(writtenAt: Date) {
+  const [stale, setStale] = useState(() => isStaleChecking(writtenAt, Date.now()));
+  useEffect(() => {
+    if (stale) return;
+    const timer = setTimeout(() => setStale(true), writtenAt.getTime() + checkingStaleMs - Date.now() + 100);
+    return () => clearTimeout(timer);
+  }, [writtenAt, stale]);
+  return stale;
+}
+
+/** For a late row: which message the row is about, since it does not sit under it. */
+function Quote({ quote, style }: { quote?: string; style: TextStyle }) {
+  return quote ? <Text style={style}>About “{quote}”</Text> : null;
+}
+
+/** The muted line shown while Haiku works, pulsing so it reads as pending; nothing once it is too old to be running. */
+function Checking({ data, writtenAt, theme, compact }: { data: Checking; writtenAt: Date; theme: Theme; compact: boolean }) {
   const styles = useStyles(theme, compact);
+  const stale = useStale(writtenAt);
   const opacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     const native = Platform.OS !== "web";
@@ -75,9 +96,11 @@ function Checking({ theme, compact }: { theme: Theme; compact: boolean }) {
     pulse.start();
     return () => pulse.stop();
   }, [opacity]);
+  if (stale) return null;
   return (
-    <Animated.View style={[styles.row, { opacity }]} accessibilityRole="progressbar" accessibilityLabel="Checking your English">
-      <Text style={[styles.muted, styles.firstLine]}>
+    <Animated.View style={[data.late ? styles.lateRow : styles.row, { opacity }]} accessibilityRole="progressbar" accessibilityLabel="Checking your English">
+      <Quote quote={data.quote} style={styles.muted} />
+      <Text style={[styles.muted, !data.late && styles.firstLine]}>
         <Text style={styles.pen}>✎ </Text>Checking your English…
       </Text>
     </Animated.View>
@@ -91,8 +114,9 @@ function Correction({ data, theme, compact }: { data: Corrected; theme: Theme; c
   const segments = useMemo(() => wordDiff(data.original, data.corrected), [data.original, data.corrected]);
   const count = data.issues.length;
   return (
-    <View style={styles.row}>
-      <Text style={[styles.diff, styles.firstLine]} selectable>
+    <View style={data.late ? styles.lateRow : styles.row}>
+      <Quote quote={data.quote} style={styles.muted} />
+      <Text style={[styles.diff, !data.late && styles.firstLine]} selectable>
         <Text style={styles.pen}>✎ </Text>
         {segments.map((segment, index) => (
           <Fragment key={index}>
@@ -136,8 +160,9 @@ function Correction({ data, theme, compact }: { data: Corrected; theme: Theme; c
 }
 
 /** The row under a user message: a pending line, a correction, or nothing when the message is fine or was not checked. */
-export function FeedbackRow({ item: { data }, theme, layout }: Props) {
-  if (data.state === "checking") return <Checking theme={theme} compact={layout.compact} />;
+export function FeedbackRow({ item: { data }, timestamp, theme, layout }: Props) {
+  // Keyed by the write time, so writing the row again (a check finished in place) restarts its stale timer.
+  if (data.state === "checking") return <Checking key={timestamp.getTime()} data={data} writtenAt={timestamp} theme={theme} compact={layout.compact} />;
   if (data.state === "corrected") return <Correction data={data} theme={theme} compact={layout.compact} />;
   return null;
 }
