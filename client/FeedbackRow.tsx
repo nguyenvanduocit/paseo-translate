@@ -1,6 +1,6 @@
 import type { PluginTimelineItemProps } from "@getpaseo/plugin/client";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, type TextStyle } from "react-native";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { checkingStaleMs, isStaleChecking, type FeedbackIssue, type FeedbackRowData } from "../shared/feedback";
 import { wordDiff } from "../shared/word-diff";
 import { fontSize } from "./typography";
@@ -48,8 +48,8 @@ function createStyles({ colors }: Theme, compact: boolean) {
     pen: { color: colors.accent },
     del: { color: colors.statusDanger, textDecorationLine: "line-through" },
     ins: { color: colors.statusSuccess },
-    toggle: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingVertical: 2 },
-    toggleText: { color: colors.accent, fontSize: size - 0.5 },
+    // The correction line is its own toggle, as wide as its text, so it never reaches the action row's buttons.
+    lineButton: { alignSelf: "flex-start" },
     notes: { gap: compact ? 6 : 8, marginTop: 4 },
     note: { borderLeftWidth: 2, borderLeftColor: colors.border, paddingLeft: compact ? 8 : 10, paddingVertical: 1 },
     noteHead: { color: colors.foreground, fontSize: size, lineHeight: size + 6 },
@@ -107,7 +107,18 @@ function Checking({ data, writtenAt, theme, compact }: { data: Checking; written
   );
 }
 
-/** The learner's text with each fix marked, then the reasons one press away. */
+/** The correction line: a button that shows or hides the reasons when there are any, plain text otherwise. */
+function Line({ count, open, onToggle, style, children }: { count: number; open: boolean; onToggle: () => void; style: StyleProp<ViewStyle>; children: ReactNode }) {
+  if (count === 0) return <View style={style}>{children}</View>;
+  const fixes = `${count} ${count === 1 ? "fix" : "fixes"}`;
+  return (
+    <Pressable accessibilityRole="button" aria-expanded={open} accessibilityLabel={`${open ? "Hide" : "Show"} why, ${fixes}`} onPress={onToggle} style={style}>
+      {children}
+    </Pressable>
+  );
+}
+
+/** The learner's text with each fix marked; pressing it shows or hides the reasons. */
 function Correction({ data, theme, compact }: { data: Corrected; theme: Theme; compact: boolean }) {
   const styles = useStyles(theme, compact);
   const [open, setOpen] = useState(false);
@@ -116,30 +127,21 @@ function Correction({ data, theme, compact }: { data: Corrected; theme: Theme; c
   return (
     <View style={data.late ? styles.lateRow : styles.row}>
       <Quote quote={data.quote} style={styles.muted} />
-      <Text style={[styles.diff, !data.late && styles.firstLine]} selectable>
-        <Text style={styles.pen}>✎ </Text>
-        {segments.map((segment, index) => (
-          <Fragment key={index}>
-            <Text style={segment.kind === "del" ? styles.del : segment.kind === "ins" ? styles.ins : undefined}>{segment.text}</Text>
-            {/* A thin space keeps "go" and "went" apart; it is drawn only, never part of either text. */}
-            {segment.kind === "del" && segments[index + 1]?.kind === "ins" ? "\u2009" : null}
-          </Fragment>
-        ))}
-        {data.truncated ? <Text style={styles.muted}> …</Text> : null}
-      </Text>
-      {count > 0 ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: open }}
-          accessibilityLabel={`${open ? "Hide" : "Show"} why, ${count} ${count === 1 ? "fix" : "fixes"}`}
-          onPress={() => setOpen(value => !value)}
-          style={styles.toggle}
-        >
-          <Text style={styles.toggleText}>
-            {open ? "▾" : "▸"} Why? · {count} {count === 1 ? "fix" : "fixes"}
-          </Text>
-        </Pressable>
-      ) : null}
+      {/* Not selectable: on the web the line is a button, where text cannot be selected anyway, and on a phone a
+          long-press to select would compete with the tap that opens the reasons. */}
+      <Line count={count} open={open} onToggle={() => setOpen(value => !value)} style={[styles.lineButton, !data.late && styles.firstLine]}>
+        <Text style={styles.diff}>
+          <Text style={styles.pen}>✎ </Text>
+          {segments.map((segment, index) => (
+            <Fragment key={index}>
+              <Text style={segment.kind === "del" ? styles.del : segment.kind === "ins" ? styles.ins : undefined}>{segment.text}</Text>
+              {/* A thin space keeps "go" and "went" apart; it is drawn only, never part of either text. */}
+              {segment.kind === "del" && segments[index + 1]?.kind === "ins" ? "\u2009" : null}
+            </Fragment>
+          ))}
+          {data.truncated ? <Text style={styles.muted}> …</Text> : null}
+        </Text>
+      </Line>
       {open ? (
         <View style={styles.notes}>
           {data.issues.map((issue, index) => (
