@@ -14,8 +14,9 @@ const PULSE_MS = 700;
 function createStyles({ colors }: Theme, compact: boolean) {
   const size = compact ? fontSize.sm : fontSize.base - 1;
   return StyleSheet.create({
-    // Right-aligned like the user's bubble above it, so it reads as part of the message, not of the reply.
-    row: { alignSelf: "flex-end", maxWidth: "100%", marginTop: compact ? 4 : 6, marginHorizontal: compact ? 2 : 4, gap: 4 },
+    // Right-aligned like the user's bubble above it, so it reads as part of the message, not of the reply. No top
+    // margin: the host already leaves its message action row and item spacing (48 px) between the bubble and this row.
+    row: { alignSelf: "flex-end", maxWidth: "100%", marginHorizontal: compact ? 2 : 4, gap: 4 },
     muted: { color: colors.foregroundMuted, fontSize: size, lineHeight: size + 7 },
     diff: { color: colors.foreground, fontSize: size, lineHeight: size + 7 },
     pen: { color: colors.accent },
