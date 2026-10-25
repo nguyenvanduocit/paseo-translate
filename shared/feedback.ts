@@ -25,15 +25,19 @@ export type FeedbackReply = z.infer<typeof feedbackReplySchema>;
 // Handed to the helper agent so the provider constrains its final reply to this shape.
 export const { $schema: _draft, ...feedbackReplyJsonSchema } = z.toJSONSchema(feedbackReplySchema);
 
+// A row written when its turn ended, at the end of the turn rather than under the message, says which message it is
+// about. Live rows carry neither field.
+const lateFields = { late: z.literal(true).optional(), quote: z.string().optional() };
+
 /**
  * The timeline row under a user message. `checking` shows while Haiku works; `fine` (nothing to fix) and
  * `unchecked` (the check failed) render nothing; `corrected` holds both texts, and the renderer diffs them.
  */
 export const feedbackRowSchema = z.discriminatedUnion("state", [
-  z.object({ state: z.literal("checking") }),
-  z.object({ state: z.literal("fine") }),
-  z.object({ state: z.literal("unchecked") }),
-  z.object({ state: z.literal("corrected"), original: z.string(), corrected: z.string(), truncated: z.boolean(), issues: z.array(issueSchema) }),
+  z.object({ state: z.literal("checking"), ...lateFields }),
+  z.object({ state: z.literal("fine"), ...lateFields }),
+  z.object({ state: z.literal("unchecked"), ...lateFields }),
+  z.object({ state: z.literal("corrected"), original: z.string(), corrected: z.string(), truncated: z.boolean(), issues: z.array(issueSchema), ...lateFields }),
 ]);
 export type FeedbackRowData = z.infer<typeof feedbackRowSchema>;
 
@@ -94,4 +98,49 @@ export function rowFromReply(original: string, truncated: boolean, reply: Feedba
 /** One row per user message, so checking the same message again replaces its row. */
 export function feedbackRowId(message: { messageId?: string; clientMessageId?: string }, seq: number): string {
   return `${feedbackRowKind}:${message.messageId ?? message.clientMessageId ?? `seq-${seq}`}`;
+}
+
+// A check that died with the plugin leaves its row on `checking`; past this age the renderer stops showing it. A check
+// takes 4 to 25 s, so a live one is never this old.
+export const checkingStaleMs = 90_000;
+
+/** Whether a `checking` row written at `writtenAt` is too old to still be running. */
+export const isStaleChecking = (writtenAt: Date, now: number) => now - writtenAt.getTime() > checkingStaleMs;
+
+const quoteLength = 60;
+
+/** The start of a message on one line, cut at a word, for a row that sits away from it. */
+export function quoteOf(text: string): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  if (line.length <= quoteLength) return line;
+  const head = line.slice(0, quoteLength);
+  const cut = head.lastIndexOf(" ");
+  return `${(cut > quoteLength / 2 ? head.slice(0, cut) : head).trimEnd()}…`;
+}
+
+/** The parts of a timeline entry this plugin reads; the daemon's entries have more. */
+export interface TimelineEntryLike {
+  seqStart: number;
+  turnId?: string;
+  item: { type: string; text?: string; messageId?: string; clientMessageId?: string; id?: string; kind?: string; data?: unknown };
+}
+
+const resultStates = new Set(["corrected", "fine", "unchecked"]);
+
+/**
+ * The user messages of a turn that still need a check when it ends: one whose row is still `checking` is finished in
+ * place, one without any row gets a late row. A turn without an id has only its last message looked at.
+ */
+export function pendingChecks(entries: readonly TimelineEntryLike[], turnId: string | null): { id: string; text: string; late: boolean }[] {
+  const rows = new Map<string, string>();
+  for (const { item } of entries)
+    if (item.type === "plugin" && item.kind === feedbackRowKind && item.id) rows.set(item.id, (item.data as { state?: string } | undefined)?.state ?? "");
+  const users = entries.filter(entry => entry.item.type === "user_message");
+  const ofTurn = turnId === null ? users.slice(-1) : users.filter(entry => entry.turnId === turnId);
+  return ofTurn.flatMap(({ item, seqStart }) => {
+    const id = feedbackRowId(item, seqStart);
+    const state = rows.get(id);
+    if (state !== undefined && resultStates.has(state)) return [];
+    return [{ id, text: item.text ?? "", late: state === undefined }];
+  });
 }
