@@ -11,8 +11,8 @@ word, a phrase or a paragraph in a chat, click **Translate**, and the Explorer p
 ![A sentence result: translation, words and phrases, grammar, patterns](assets/screenshot-sentence.png)
 
 It also checks the English you write. After you send a message in a Claude chat, Claude Haiku reads
-it and, if something is off, a line under the message shows your text with each fix marked and a
-**Why?** list that explains each one.
+it and, if something is off, a line under the message shows your text with each fix marked. Click
+the line to see why each fix was made.
 
 `OVERVIEW.md` is the page Paseo shows when you browse plugins. This file covers installing, using and
 developing it.
@@ -50,7 +50,8 @@ a few seconds. Then:
 
 - the message is fine: the line disappears;
 - something is off: the line shows your message with removed words struck through in red and added
-  words in green; **Why? · N fixes** opens one explanation per fix, tagged `mistake`, `unnatural` or `tip`;
+  words in green; click (or tap) the line to open one explanation per fix, tagged `mistake`,
+  `unnatural` or `tip`, and click it again to close them;
 - the check could not run: the line disappears and the reason goes to `paseo plugin logs translate`.
 
 Checked: every message you write in a top-level Claude chat, including messages sent while the

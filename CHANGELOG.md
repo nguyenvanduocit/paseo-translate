@@ -3,8 +3,8 @@
 ## Unreleased
 
 - English feedback: after you send a message in a Claude chat, Claude Haiku checks its English on the host that owns
-  the chat. A message with mistakes gets a line under it with each fix marked and a "Why?" list of short
-  explanations; a message that is fine shows nothing.
+  the chat. A message with mistakes gets a line under it with each fix marked; clicking the line opens a list of
+  short explanations. A message that is fine shows nothing.
 - Setting "Check my English", on by default, per host.
 - Messages sent while the agent is still working get feedback too, under the message; a message missed
   then is checked when the turn ends, with a late row that quotes it. Each message is checked once and
