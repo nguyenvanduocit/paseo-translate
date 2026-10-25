@@ -1,5 +1,5 @@
 import type { PluginTimelineItemProps } from "@getpaseo/plugin/client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { FeedbackIssue, FeedbackRowData } from "../shared/feedback";
 import { wordDiff } from "../shared/word-diff";
@@ -14,7 +14,8 @@ const PULSE_MS = 700;
 function createStyles({ colors }: Theme, compact: boolean) {
   const size = compact ? fontSize.sm : fontSize.base - 1;
   return StyleSheet.create({
-    row: { marginTop: compact ? 4 : 6, marginHorizontal: compact ? 2 : 4, gap: 4 },
+    // Right-aligned like the user's bubble above it, so it reads as part of the message, not of the reply.
+    row: { alignSelf: "flex-end", maxWidth: "100%", marginTop: compact ? 4 : 6, marginHorizontal: compact ? 2 : 4, gap: 4 },
     muted: { color: colors.foregroundMuted, fontSize: size, lineHeight: size + 7 },
     diff: { color: colors.foreground, fontSize: size, lineHeight: size + 7 },
     pen: { color: colors.accent },
@@ -71,9 +72,11 @@ function Correction({ data, theme, compact }: { data: Corrected; theme: Theme; c
       <Text style={styles.diff} selectable>
         <Text style={styles.pen}>✎ </Text>
         {segments.map((segment, index) => (
-          <Text key={index} style={segment.kind === "del" ? styles.del : segment.kind === "ins" ? styles.ins : undefined}>
-            {segment.text}
-          </Text>
+          <Fragment key={index}>
+            <Text style={segment.kind === "del" ? styles.del : segment.kind === "ins" ? styles.ins : undefined}>{segment.text}</Text>
+            {/* A thin space keeps "go" and "went" apart; it is drawn only, never part of either text. */}
+            {segment.kind === "del" && segments[index + 1]?.kind === "ins" ? "\u2009" : null}
+          </Fragment>
         ))}
         {data.truncated ? <Text style={styles.muted}> …</Text> : null}
       </Text>
