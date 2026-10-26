@@ -35,8 +35,8 @@ const codePatterns = [
   /```[\s\S]*?(?:```|$)/g, // fenced block, also one left open
   /`[^`\n]*`/g, // inline code
   /\bhttps?:\/\/\S+/g, // link
-  /^.*(?:\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}|^\s+at\s+\S|\b[A-Z][A-Za-z]*(?:Error|Exception)\b).*$/gm, // log or stack line
-  /\S*[/\\{}[\]<>=|$#;]\S*/g, // path, expression or other symbol-heavy token
+  /^(?:\s*(?:\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}|[A-Z][A-Za-z]*(?:Error|Exception)\b)|\s+at\s+\S).*$/gm, // log or stack line: it starts like one
+  /(?<!\S)\S*[/\\{}[\]<>=|$#;]\S*/g, // path, expression or other symbol-heavy token; starts at a token start, so a long plain token is not rescanned from every character
 ];
 
 /** The message with code, logs, links and paths taken out. */

@@ -147,7 +147,14 @@ export function createFeedbackChecks(isEnabled: () => Promise<boolean>) {
     if (!isTopLevel(agent) || !isClaudeSession(agent) || agent.workspaceId === null) return false;
     if (!(await isEnabled())) return false;
     const watch = watchOf(agent.id);
-    watch.ownHelper ??= paseo.agents.ref(agent.id).refresh().then(snapshot => isOwnHelper(snapshot?.agent.labels));
+    // A failed lookup is not remembered, so the next turn asks again.
+    watch.ownHelper ??= paseo.agents.ref(agent.id).refresh().then(
+      snapshot => isOwnHelper(snapshot?.agent.labels),
+      error => {
+        watch.ownHelper = undefined;
+        throw error;
+      },
+    );
     return !(await watch.ownHelper);
   }
 

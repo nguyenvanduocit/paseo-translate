@@ -1,4 +1,5 @@
 import type { PaseoApi } from "@getpaseo/client";
+import { isOwnHelper } from "../shared/feedback-rules";
 import { parsePartialReply, parseReply, replyJsonSchema, systemPrompt, type Candidate, type Translation } from "../shared/translate";
 import { getLookup, setLatestLookup, updateLookup } from "./lookups";
 
@@ -21,7 +22,7 @@ async function findSession(paseo: PaseoApi, workspaceId: string) {
     sort: [{ key: "updated_at", direction: "desc" }],
     page: { limit: 50 },
   });
-  const session = entries.map(entry => entry.agent).find(agent => agent.workspaceId === workspaceId && !agent.labels[translatorLabel]);
+  const session = entries.map(entry => entry.agent).find(agent => agent.workspaceId === workspaceId && !isOwnHelper(agent.labels));
   if (!session) throw new Error("This workspace has no chat to take a provider from.");
   return session;
 }
@@ -73,7 +74,7 @@ async function settle(deps: TranslatorDeps, id: string) {
     const translation = await translate(deps, id, lookup.workspaceId, lookup);
     updateLookup(id, { status: "done", translation, error: undefined });
   } catch (error) {
-    updateLookup(id, { status: "error", error: error instanceof Error ? error.message : String(error) });
+    updateLookup(id, { status: "error", error: error instanceof Error ? error.message : String(error), translation: undefined });
   }
 }
 
