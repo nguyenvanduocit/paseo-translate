@@ -1,7 +1,7 @@
 {
   "name": "paseo-translate",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Select text in a Paseo chat and get a translation with a word-by-word breakdown, grammar notes and sentence patterns.",
   "license": "MIT",
   "repository": {

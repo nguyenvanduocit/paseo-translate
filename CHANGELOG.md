@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+- English feedback: a one-line message that mentions an error name or a timestamp is checked, not skipped as code.
+- A very long message with no spaces (a pasted hash, a long unspaced paragraph) no longer stalls the plugin for seconds before its check.
+- A failed lookup of a chat's details is asked again on the next turn, so one daemon error no longer switches feedback off for that chat.
+- Translate takes its provider and parent from your chat, never from an English-check helper that is still running.
+- A translation that fails shows only the error, not a half-finished translation above it.
+
 ## 0.2.0
 
 - English feedback: after you send a message in a Claude chat, Claude Haiku checks its English on the host that owns
