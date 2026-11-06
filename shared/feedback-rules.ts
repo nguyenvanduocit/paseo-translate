@@ -3,6 +3,10 @@
 /** Marks the feedback helper agents, the way `paseo-translate` marks the translation helpers. */
 export const feedbackHelperLabel = "paseo-translate-feedback";
 const ownLabels = ["paseo-translate", feedbackHelperLabel];
+// Paseo records no author on a message, so the chats whose messages software sends are known by a label on their
+// agent: this plugin's helpers, the agent Paseo starts for each run of a schedule, and the router and worker tabs of a
+// person's AI Assistant in the `chat` plugin (its talk-to-myself tab, where the person writes, carries another label).
+const softwareLabels = [...ownLabels, "paseo.schedule-run", "chat.assistant-of"];
 
 /**
  * Messages longer than this are checked only up to here, cut at a sentence end. About 150 to 200 words: enough for
@@ -26,8 +30,11 @@ export const isTopLevel = (agent: SessionAgent) => agent.parentAgentId === null;
 /** The check sends the message to Claude Haiku; v1 does that only for chats that already talk to Claude. */
 export const isClaudeSession = (agent: SessionAgent) => agent.provider === "claude" || agent.provider.startsWith("claude/");
 
-/** A helper agent of this plugin, so the plugin never checks its own prompts. */
+/** A helper agent of this plugin, never the user's chat. */
 export const isOwnHelper = (labels: Record<string, string> | null | undefined) => ownLabels.some(label => labels?.[label] !== undefined);
+
+/** A chat that software runs (see `softwareLabels`): none of its messages are the user's, so none is checked. */
+export const isRunBySoftware = (labels: Record<string, string> | null | undefined) => softwareLabels.some(label => labels?.[label] !== undefined);
 
 export type SkipReason = "no text" | "command" | "short" | "code" | "not-english";
 

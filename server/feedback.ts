@@ -16,7 +16,7 @@ import {
   type TimelineEntryLike,
 } from "../shared/feedback";
 import { createLimiter, MessageLedger } from "../shared/feedback-queue";
-import { excerpt, feedbackHelperLabel, isClaudeSession, isOwnHelper, isTopLevel, skipReason } from "../shared/feedback-rules";
+import { excerpt, feedbackHelperLabel, isClaudeSession, isRunBySoftware, isTopLevel, skipReason } from "../shared/feedback-rules";
 
 // A check started by a hook (the message that starts a turn, or one left over when it ends) runs inside Paseo's 30 s
 // hook limit, so it leaves time to write its row. A check takes 4 to 15 s; one slow helper took 25 s.
@@ -121,12 +121,13 @@ interface Watch {
   ledger: MessageLedger;
   limit: ReturnType<typeof createLimiter>;
   controller: AbortController;
-  ownHelper?: Promise<boolean>;
+  runBySoftware?: Promise<boolean>;
   unsubscribe?: () => void;
 }
 
 /**
- * English feedback for every message the user writes in a top-level Claude chat, written as a row under the message.
+ * English feedback for every message the user writes in a top-level Claude chat that software does not run, written as
+ * a row under the message.
  * Three triggers can see a message: the turn it starts, the agent's live timeline while a turn runs (a message sent
  * mid-turn starts no turn), and the end of the turn. Each message is checked once, by whichever sees it first. A
  * message that is skipped, or a check that fails, leaves no visible trace: the reason goes to the plugin log only.
@@ -142,20 +143,20 @@ export function createFeedbackChecks(isEnabled: () => Promise<boolean>) {
     return watch;
   };
 
-  /** Whether this agent's messages get feedback: a top-level Claude chat that is not a helper, with feedback on. */
+  /** Whether this agent's messages get feedback: a top-level Claude chat that software does not run, with feedback on. */
   async function eligible(agent: PluginHookAgent, paseo: PaseoApi): Promise<boolean> {
     if (!isTopLevel(agent) || !isClaudeSession(agent) || agent.workspaceId === null) return false;
     if (!(await isEnabled())) return false;
     const watch = watchOf(agent.id);
     // A failed lookup is not remembered, so the next turn asks again.
-    watch.ownHelper ??= paseo.agents.ref(agent.id).refresh().then(
-      snapshot => isOwnHelper(snapshot?.agent.labels),
+    watch.runBySoftware ??= paseo.agents.ref(agent.id).refresh().then(
+      snapshot => isRunBySoftware(snapshot?.agent.labels),
       error => {
-        watch.ownHelper = undefined;
+        watch.runBySoftware = undefined;
         throw error;
       },
     );
-    return !(await watch.ownHelper);
+    return !(await watch.runBySoftware);
   }
 
   /** Checks one message and writes its row, unless another trigger has already taken it. */

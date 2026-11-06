@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- English feedback skips chats that software runs, whose messages it used to check as yours: the agent Paseo starts
+  for each run of a schedule (label `paseo.schedule-run`) and the router and worker tabs of an AI Assistant from the
+  `chat` plugin (label `chat.assistant-of`). Talk to myself and your other chats are checked as before.
+
 ## 0.2.1
 
 - English feedback: a one-line message that mentions an error name or a timestamp is checked, not skipped as code.

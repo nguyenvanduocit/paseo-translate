@@ -55,10 +55,17 @@ a few seconds. Then:
 - the check could not run: the line disappears and the reason goes to `paseo plugin logs translate`.
 
 Checked: every message you write in a top-level Claude chat, including messages sent while the
-agent is still working. Skipped: subagents and helper agents, chats on other providers, slash
-commands, one-word messages, images sent without text (`skipped (no text)` in the log), messages
-that are mostly code, logs or links, and messages that are mostly not English (Vietnamese, Japanese,
-and so on). Only the first 1000 characters of a long message are checked, cut at a sentence end.
+agent is still working. Skipped: subagents and helper agents, chats on other providers, chats that
+software runs (the agent Paseo starts for each run of a schedule, labelled `paseo.schedule-run`, and
+the router and worker tabs of an AI Assistant from the `chat` plugin, labelled `chat.assistant-of`),
+slash commands, one-word messages, images sent without text (`skipped (no text)` in the log),
+messages that are mostly code, logs or links, and messages that are mostly not English (Vietnamese,
+Japanese, and so on). Only the first 1000 characters of a long message are checked, cut at a
+sentence end.
+
+Paseo does not record who wrote a message, so the plugin tells the chats that software runs by their
+agent's labels. A prompt that a plugin sends into a chat you run yourself is checked like your own
+message.
 
 A message that could not be checked when it arrived is checked when the agent's turn ends. Its row
 then sits at the end of the turn and starts with **About "…"**, a quote of the message it is about.

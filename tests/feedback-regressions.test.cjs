@@ -50,6 +50,52 @@ test('a failed helper-label lookup is asked again on the next turn', async () =>
   await checks.stop();
 });
 
+// One turn of a top-level Claude chat whose agent carries `labels`, from its start to its end: how many helpers the
+// English check starts and which rows it writes.
+async function checkOneTurn(labels, text) {
+  let helpers = 0;
+  const rows = [];
+  const helper = { waitForFinish: async () => ({ status: 'idle', lastMessage: JSON.stringify({ ok: true, corrected: text, issues: [] }) }), archive: async () => {} };
+  const paseo = {
+    agents: { ref: () => ({
+      refresh: async () => ({ agent: { labels } }),
+      timeline: {
+        refetch: async () => ({ entries: [{ seqStart: 1, turnId: 't1', item: { type: 'user_message', text, messageId: 'm1' } }] }),
+        subscribe: () => Object.assign(() => {}, { ready: Promise.resolve() }),
+        append: async row => { rows.push(row.data.state); },
+      },
+    }) },
+    workspaces: { ref: () => ({ agents: { create: async () => { helpers++; return helper; } } }) },
+  };
+  const agent = { id: 'agent-12345678', parentAgentId: null, provider: 'claude', workspaceId: 'ws1' };
+  const context = { paseo, signal: new AbortController().signal };
+  const checks = createFeedbackChecks(async () => true);
+  await checks.turnStarted({ agent, turnId: 't1' }, context);
+  await checks.turnEnded({ agent, turnId: 't1', outcome: { kind: 'completed' }, timeline: [] }, context);
+  await checks.stop();
+  return { helpers, rows };
+}
+
+test("a chat that software runs gets no check: an AI Assistant router or worker tab, a scheduled run, this plugin's helper", async () => {
+  const prompt = 'New messages in 1 conversation. Assign the work in each with assistant_assign.';
+  for (const labels of [
+    { 'chat.assistant-router': 'duocnv', 'chat.assistant-of': 'duocnv', 'chat.assistant-access': 'v1' },
+    { 'chat.assistant-worker': 'duocnv', 'chat.assistant-of': 'duocnv', 'chat.assistant-access': 'v1' },
+    { 'paseo.schedule-id': 's1', 'paseo.schedule-run': 'r1' },
+    { [rules.feedbackHelperLabel]: '1' },
+  ])
+    assert.deepEqual(await checkOneTurn(labels, prompt), { helpers: 0, rows: [] }, JSON.stringify(labels));
+});
+
+test("the person's own chats are still checked, talk-to-myself and a chat with Paseo's tab label included", async () => {
+  for (const labels of [
+    {},
+    { 'chat.assistant-self': 'duocnv', 'chat.assistant-access': 'v1' },
+    { 'paseo.open-agent-tab.cid_1': '1' },
+  ])
+    assert.deepEqual(await checkOneTurn(labels, 'we was deploy it yesterday'), { helpers: 1, rows: ['checking', 'fine'] }, JSON.stringify(labels));
+});
+
 test('a lookup that fails after part of the reply streamed shows only the error', async () => {
   let handler;
   const helper = {
